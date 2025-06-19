@@ -33,7 +33,7 @@ android {
 }
 
 dependencies {
-    implementation(files("libs/ASAPJava-0.7.0.jar"))
+    api(files("libs/ASAPJava-0.7.0.jar"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
