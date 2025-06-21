@@ -53,8 +53,6 @@ class BleGattServerService : Service() {
         // Same as the service but for the characteristic
         val CHARACTERISTIC_UUID: UUID = UUID.fromString("00001111-0000-1000-8000-00805f9b34fb")
 
-        val CCC_DESCRIPTOR_UUID = "00002902-0000-1000-8000-00805F9B34FB"
-
         const val ACTION_START_ADVERTISING = "start_ad"
         const val ACTION_STOP_ADVERTISING = "stop_ad"
 
@@ -101,6 +99,7 @@ class BleGattServerService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d(this.getLogStart(), "onCreate")
         // If we are missing permission stop the service
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)

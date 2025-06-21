@@ -1,12 +1,14 @@
 package net.sharksystem.asap.android.sample
 
+import android.util.Log
 import net.sharksystem.asap.ASAPConnectionHandler
 import net.sharksystem.asap.ASAPEncounterConnectionType
+import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.protocol.ASAPConnection
 import java.io.InputStream
 import java.io.OutputStream
 
-class TestASAPConnectionHandler: ASAPConnectionHandler {
+class TestASAPConnectionHandler(private val peerId: CharSequence) : ASAPConnectionHandler {
     override fun handleConnection(
         p0: InputStream?,
         p1: OutputStream?,
@@ -39,6 +41,6 @@ class TestASAPConnectionHandler: ASAPConnectionHandler {
         p1: OutputStream?,
         p2: ASAPEncounterConnectionType?
     ): ASAPConnection {
-        TODO("Not yet implemented")
+        return TestASAPConnection(peerId)
     }
 }

@@ -8,7 +8,6 @@ import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
 import android.bluetooth.BluetoothSocket
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -21,35 +20,35 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 @SuppressLint("MissingPermission")
-class BleGattConnector(
+class BleGattClient(
     private val context: Context,
     private val device: BluetoothDevice,
-    private val asapEncounterManager: ASAPEncounterManager
+    private val asapEncounterManager: ASAPEncounterManager,
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
 ) {
+    var isConnected: Boolean = false
     private var gatt: BluetoothGatt? = null
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
-            Log.d(
-                this.getLogStart(),
-                "device: ${device.name} ${device.address} Connection change to $newState"
-            )
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
-                    Log.d(TAG, "Connected to GATT server")
-                    this@BleGattConnector.gatt = gatt
+                    Log.d(this.getLogStart(), "Connected to GATT server")
+                    isConnected = true
+                    this@BleGattClient.gatt = gatt
                     Thread.sleep(1000)
                     gatt?.discoverServices()
                 }
 
                 BluetoothProfile.STATE_DISCONNECTED -> {
-                    Log.d(TAG, "Disconnected from GATT server")
-                    this@BleGattConnector.gatt = null
+                    Log.d(this.getLogStart(), "Disconnected from GATT server")
+                    isConnected = false
+                    this@BleGattClient.gatt = null
                 }
             }
         }
 
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
-            Log.d(TAG, "onServicesDiscovered: $status")
+            Log.d(this.getLogStart(), "onServicesDiscovered: $status")
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val characteristic = gatt?.getService(BleGattServerService.SERVICE_UUID)
                     ?.getCharacteristic(BleGattServerService.CHARACTERISTIC_UUID)
@@ -68,13 +67,8 @@ class BleGattConnector(
                 .getInt()
             Log.d(this.getLogStart(), "Characteristic read PSM: $readResult")
 
-            val socket = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                device.createInsecureL2capChannel(readResult)
-            } else {
-                TODO("VERSION.SDK_INT < Q")
-            }
-            val scope = CoroutineScope(Dispatchers.IO)
-            scope.launch {
+            val socket = device.createInsecureL2capChannel(readResult)
+            coroutineScope.launch {
                 socket.connect()
                 Log.d(
                     this.getLogStart(),
@@ -86,13 +80,8 @@ class BleGattConnector(
     }
 
     init {
-        Log.d(TAG, "Connecting to device: ${device.address}")
+        Log.d(this.getLogStart(), "Connecting to device: ${device.address}")
         gatt = device.connectGatt(context, false, bluetoothGattCallback)
-    }
-
-    fun disconnect() {
-        gatt?.close()
-        gatt = null
     }
 
     fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
@@ -105,9 +94,5 @@ class BleGattConnector(
         asapEncounterManager.handleEncounter(
             streamPair, ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK, initiator
         )
-    }
-
-    companion object {
-        private const val TAG = "BleGattConnector"
     }
 }
