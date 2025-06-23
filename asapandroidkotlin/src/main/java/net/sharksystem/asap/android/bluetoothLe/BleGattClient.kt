@@ -24,24 +24,23 @@ class BleGattClient(
     private val context: Context,
     private val device: BluetoothDevice,
     private val asapEncounterManager: ASAPEncounterManager,
-    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
-    var isConnected: Boolean = false
+    var isDisconnected: Boolean = false
     private var gatt: BluetoothGatt? = null
+
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
         override fun onConnectionStateChange(gatt: BluetoothGatt?, status: Int, newState: Int) {
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     Log.d(this.getLogStart(), "Connected to GATT server")
-                    isConnected = true
                     this@BleGattClient.gatt = gatt
-                    Thread.sleep(1000)
                     gatt?.discoverServices()
                 }
 
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(this.getLogStart(), "Disconnected from GATT server")
-                    isConnected = false
+                    isDisconnected = true
                     this@BleGattClient.gatt = null
                 }
             }
@@ -52,7 +51,13 @@ class BleGattClient(
             if (status == BluetoothGatt.GATT_SUCCESS) {
                 val characteristic = gatt?.getService(BleGattServerService.SERVICE_UUID)
                     ?.getCharacteristic(BleGattServerService.CHARACTERISTIC_UUID)
-                gatt?.readCharacteristic(characteristic)
+                if (characteristic != null) {
+                    gatt.readCharacteristic(characteristic)
+                } else {
+                    Log.e(this.getLogStart(), "Characteristic not found")
+                }
+            }else{
+                Log.e(this.getLogStart(), "onServicesDiscovered not successful: $status")
             }
         }
 
@@ -80,7 +85,7 @@ class BleGattClient(
     }
 
     init {
-        Log.d(this.getLogStart(), "Connecting to device: ${device.address}")
+        Log.d(this.getLogStart(), "Connecting to device: ${device.name} ${device.address}")
         gatt = device.connectGatt(context, false, bluetoothGattCallback)
     }
 

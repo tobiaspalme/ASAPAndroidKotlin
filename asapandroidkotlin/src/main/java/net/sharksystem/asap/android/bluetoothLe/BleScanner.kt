@@ -24,7 +24,7 @@ class BleScanner(
         .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build(),
     private val filter: ScanFilter = ScanFilter.Builder()
         .setServiceUuid(ParcelUuid(BleGattServerService.SERVICE_UUID)).build(),
-    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.Main)
+    private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
     private val deviceFoundListeners: MutableList<BleDeviceFoundListener> = mutableListOf()
 
@@ -58,7 +58,9 @@ class BleScanner(
 
     private fun notifyBleDeviceFound(device: BluetoothDevice) {
         deviceFoundListeners.forEach {
-            it.onDeviceFound(device)
+            coroutineScope.launch {
+                it.onDeviceFound(device)
+            }
         }
     }
 

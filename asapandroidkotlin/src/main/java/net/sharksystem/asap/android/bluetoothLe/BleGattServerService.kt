@@ -19,21 +19,17 @@ import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.BluetoothLeAdvertiser
 import android.content.Intent
 import android.content.pm.PackageManager
-import android.content.pm.ServiceInfo
+import android.os.Binder
 import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
-import androidx.core.app.NotificationChannelCompat
-import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationManagerCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import net.sharksystem.asap.ASAPEncounterConnectionType
 import net.sharksystem.asap.ASAPEncounterManager
@@ -53,13 +49,6 @@ class BleGattServerService : Service() {
         // Same as the service but for the characteristic
         val CHARACTERISTIC_UUID: UUID = UUID.fromString("00001111-0000-1000-8000-00805f9b34fb")
 
-        const val ACTION_START_ADVERTISING = "start_ad"
-        const val ACTION_STOP_ADVERTISING = "stop_ad"
-
-        val isServerRunning = MutableStateFlow(false)
-
-        private const val CHANNEL = "gatt_server_channel"
-
         private var asapEncounterManager: ASAPEncounterManager? = null
 
         fun setASAPEncounterManager(manager: ASAPEncounterManager) {
@@ -70,6 +59,8 @@ class BleGattServerService : Service() {
             return asapEncounterManager
         }
     }
+
+    private val binder = BleGattServerBinder()
 
     private val manager: BluetoothManager by lazy {
         applicationContext.getSystemService(BluetoothManager::class.java)
@@ -100,7 +91,6 @@ class BleGattServerService : Service() {
     override fun onCreate() {
         super.onCreate()
         Log.d(this.getLogStart(), "onCreate")
-        // If we are missing permission stop the service
         val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             ActivityCompat.checkSelfPermission(this, Manifest.permission.BLUETOOTH_CONNECT)
         } else {
@@ -108,97 +98,46 @@ class BleGattServerService : Service() {
         }
 
         if (permission == PackageManager.PERMISSION_GRANTED) {
-            startInForeground()
 
             Log.d(this.getLogStart(), "Opening GATT server...")
             server = manager.openGattServer(applicationContext, GattServerCallback())
-            Thread.sleep(1000)
             server.addService(service)
-            isServerRunning.value = true
         } else {
             Log.d(this.getLogStart(), "Missing connect permission")
             stopSelf()
         }
+        startAdvertisingAndListen()
     }
 
-    @SuppressLint("MissingPermission")
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent == null || !hasAdvertisingPermission()) {
-            return START_NOT_STICKY
+    fun startAdvertisingAndListen() {
+        Log.d(this.getLogStart(), "Start advertising")
+        startAdvertising()
+        serverSocket = adapter.listenUsingInsecureL2capChannel()
+        val byteArray = ByteArray(1)
+        byteArray[0] = serverSocket.psm.toByte()
+        server.getService(SERVICE_UUID).getCharacteristic(CHARACTERISTIC_UUID).value =
+            byteArray
+        Log.d(this.getLogStart(), "ServerSocket psm: ${serverSocket.psm}")
+        val scope = CoroutineScope(Dispatchers.IO)
+        scope.launch {
+            val socket = serverSocket.accept()
+            Log.d(
+                this.getLogStart(),
+                "-----> Server accepted connection handle Encounter <-----"
+            )
+            handleBTSocket(socket, false)
         }
-        when (intent.action) {
-            ACTION_START_ADVERTISING -> {
-                Log.d(this.getLogStart(), "Start advertising")
-                startAdvertising()
-                serverSocket = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                    adapter.listenUsingInsecureL2capChannel()
-                } else {
-                    TODO("VERSION.SDK_INT < Q")
-                }
-                val byteArray = ByteArray(1)
-                byteArray[0] = serverSocket.psm.toByte()
-                server.getService(SERVICE_UUID).getCharacteristic(CHARACTERISTIC_UUID).value =
-                    byteArray
-                Log.d(this.getLogStart(), "ServerSocket psm: ${serverSocket.psm}")
-                val scope = CoroutineScope(Dispatchers.IO)
-                scope.launch {
-                    val socket = serverSocket.accept()
-                    Log.d(this.getLogStart(), "-----> Server accepted connection handle Encounter <-----")
-                    handleBTSocket(socket, false)
-                }
-            }
-
-            ACTION_STOP_ADVERTISING -> {
-                Log.d(this.getLogStart(), "Stop advertising")
-                advertiser.stopAdvertising(SampleAdvertiseCallback)
-            }
-
-            else -> throw IllegalArgumentException("Unknown action")
-        }
-
-        return START_STICKY
     }
 
     @SuppressLint("MissingPermission")
     override fun onDestroy() {
         super.onDestroy()
-        isServerRunning.value = false
         if (hasAdvertisingPermission()) {
-            advertiser.stopAdvertising(SampleAdvertiseCallback)
+            advertiser.stopAdvertising(GattServerAdvertiseCallback)
         }
         server.close()
         scope.cancel()
         Log.d(this.getLogStart(), "Server destroyed")
-    }
-
-    private fun startInForeground() {
-        createNotificationChannel()
-
-        val notification = NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(applicationInfo.icon)
-            .setContentTitle("GATT Server")
-            .setContentText("Running...")
-            .build()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            startForeground(
-                100,
-                notification,
-                ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE,
-            )
-        } else {
-            startForeground(100, notification)
-        }
-    }
-
-    private fun createNotificationChannel() {
-        val channel = NotificationChannelCompat.Builder(
-            CHANNEL,
-            NotificationManagerCompat.IMPORTANCE_HIGH,
-        )
-            .setName("GATT Server channel")
-            .setDescription("Channel for the GATT server sample")
-            .build()
-        NotificationManagerCompat.from(this).createNotificationChannel(channel)
     }
 
     private fun hasAdvertisingPermission() =
@@ -222,7 +161,7 @@ class BleGattServerService : Service() {
             .addServiceUuid(ParcelUuid(SERVICE_UUID))
             .build()
 
-        advertiser.startAdvertising(settings, data, SampleAdvertiseCallback)
+        advertiser.startAdvertising(settings, data, GattServerAdvertiseCallback)
     }
 
     @SuppressLint("MissingPermission")
@@ -232,29 +171,19 @@ class BleGattServerService : Service() {
             status: Int,
             newState: Int,
         ) {
-            Log.d(
-                this.getLogStart(),
-                "device: ${device.name} ${device.address} Connection change to $newState"
-            )
             when (newState) {
                 BluetoothGatt.STATE_CONNECTED -> {
-
-
-                    /*val characteristic = service.getCharacteristic(CHARACTERISTIC_UUID)
-                    val bleStreamPair =
-                        BleStreamPair(server, characteristic, device.address, device)
-                    activeConnections[device] = bleStreamPair
-
-                    // Get StreamPair and call handleEncounter
-                    val streamPair = bleStreamPair.getStreamPair()
-                    getASAPEncounterManager()?.handleEncounter(
-                        streamPair,
-                        ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK
-                    )*/
+                    Log.d(
+                        this.getLogStart(),
+                        "${device.name} ${device.address} connected to gatt server"
+                    )
                 }
 
                 BluetoothGatt.STATE_DISCONNECTED -> {
-
+                    Log.d(
+                        this.getLogStart(),
+                        "${device.name} ${device.address} disconnected from gatt server"
+                    )
                 }
             }
         }
@@ -279,7 +208,7 @@ class BleGattServerService : Service() {
         }
     }
 
-    object SampleAdvertiseCallback : AdvertiseCallback() {
+    object GattServerAdvertiseCallback : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
             Log.d(this.getLogStart(), "Started advertising")
         }
@@ -289,7 +218,7 @@ class BleGattServerService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
+    override fun onBind(intent: Intent?): IBinder = binder
 
     fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
         val remoteMacAddress = socket.remoteDevice.address
@@ -301,6 +230,10 @@ class BleGattServerService : Service() {
         getASAPEncounterManager()?.handleEncounter(
             streamPair, ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK, initiator
         )
+    }
+
+    inner class BleGattServerBinder : Binder() {
+        fun getService() = this@BleGattServerService
     }
 
 }
