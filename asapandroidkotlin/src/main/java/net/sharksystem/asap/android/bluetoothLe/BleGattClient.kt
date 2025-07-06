@@ -18,12 +18,15 @@ import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.utils.streams.StreamPairImpl
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.UUID
 
 @SuppressLint("MissingPermission")
 class BleGattClient(
     private val context: Context,
     private val device: BluetoothDevice,
-    private val asapEncounterManager: ASAPEncounterManager,
+    private val serviceUUID: UUID,
+    private val characteristicUUID: UUID,
+    private val handleBTSocket: (BluetoothSocket, Boolean) -> Unit,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
     var isDisconnected: Boolean = false
@@ -49,14 +52,14 @@ class BleGattClient(
         override fun onServicesDiscovered(gatt: BluetoothGatt?, status: Int) {
             Log.d(this.getLogStart(), "onServicesDiscovered: $status")
             if (status == BluetoothGatt.GATT_SUCCESS) {
-                val characteristic = gatt?.getService(BleGattServerService.SERVICE_UUID)
-                    ?.getCharacteristic(BleGattServerService.CHARACTERISTIC_UUID)
+                val characteristic = gatt?.getService(serviceUUID)
+                    ?.getCharacteristic(characteristicUUID)
                 if (characteristic != null) {
                     gatt.readCharacteristic(characteristic)
                 } else {
                     Log.e(this.getLogStart(), "Characteristic not found")
                 }
-            }else{
+            } else {
                 Log.e(this.getLogStart(), "onServicesDiscovered not successful: $status")
             }
         }
@@ -87,17 +90,5 @@ class BleGattClient(
     init {
         Log.d(this.getLogStart(), "Connecting to device: ${device.name} ${device.address}")
         gatt = device.connectGatt(context, false, bluetoothGattCallback)
-    }
-
-    fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
-        val remoteMacAddress = socket.remoteDevice.address
-
-        val streamPair = StreamPairImpl.getStreamPairWithEndpointAddress(
-            socket.inputStream, socket.outputStream, remoteMacAddress
-        )
-
-        asapEncounterManager.handleEncounter(
-            streamPair, ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK, initiator
-        )
     }
 }

@@ -12,6 +12,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import org.junit.Before
 import org.junit.Test
+import java.util.UUID
 
 class BleScannerTest {
 
@@ -19,6 +20,7 @@ class BleScannerTest {
     private val bluetoothLeScanner: BluetoothLeScanner = mockk<BluetoothLeScanner>(relaxed = true)
     private val scanSettings: ScanSettings = mockk<ScanSettings>(relaxed = true)
     private val scanFilter: ScanFilter = mockk<ScanFilter>(relaxed = true)
+    private val serviceUuid: UUID = UUID.fromString("00002657-0000-1000-8000-00805f9b34fb")
     private val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
 
     private lateinit var bleScanner: BleScanner
@@ -28,6 +30,7 @@ class BleScannerTest {
     fun setup() {
         bleScanner = BleScanner(
             mockBluetoothAdapter,
+            serviceUuid,
             bluetoothLeScanner,
             scanSettings,
             scanFilter,

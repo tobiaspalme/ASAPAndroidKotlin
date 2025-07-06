@@ -14,19 +14,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import net.sharksystem.asap.android.util.getLogStart
+import java.util.UUID
 
 
 @SuppressLint("MissingPermission")
 class BleScanner(
     private val bluetoothAdapter: BluetoothAdapter,
+    private val serviceUUID: UUID,
+    private val onDeviceFound: suspend (BluetoothDevice) -> Unit,
     private val bleScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner,
     private val scanSettings: ScanSettings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build(),
     private val filter: ScanFilter = ScanFilter.Builder()
-        .setServiceUuid(ParcelUuid(BleGattServerService.SERVICE_UUID)).build(),
+        .setServiceUuid(ParcelUuid(serviceUUID)).build(),
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
-    private val deviceFoundListeners: MutableList<BleDeviceFoundListener> = mutableListOf()
 
     fun startScan() {
         Log.d(this.getLogStart(), "Starting scan")
@@ -47,28 +49,14 @@ class BleScanner(
                 this.getLogStart(),
                 "onScanResult: ${result.device} ${result.scanRecord?.serviceUuids}"
             )
-            notifyBleDeviceFound(result.device)
+            coroutineScope.launch {
+                onDeviceFound(result.device)
+            }
         }
 
         override fun onScanFailed(errorCode: Int) {
             super.onScanFailed(errorCode)
             Log.d(this.getLogStart(), "onScanFailed: $errorCode")
         }
-    }
-
-    private fun notifyBleDeviceFound(device: BluetoothDevice) {
-        deviceFoundListeners.forEach {
-            coroutineScope.launch {
-                it.onDeviceFound(device)
-            }
-        }
-    }
-
-    fun registerBleDeviceFoundListener(listener: BleDeviceFoundListener) {
-        deviceFoundListeners.add(listener)
-    }
-
-    fun unregisterBleDeviceFoundListener(listener: BleDeviceFoundListener) {
-        deviceFoundListeners.remove(listener)
     }
 }

@@ -18,7 +18,11 @@ class BleEngineTest {
 
     @Before
     fun setUp(){
-        bleEngine = BleEngine(mockContext, mockASAPEncounterManager, mockBluetoothAdapter)
+        bleEngine = BleEngine(
+            context = mockContext,
+            asapEncounterManager = mockASAPEncounterManager,
+            bluetoothAdapter = mockBluetoothAdapter
+        )
     }
 
     @Test
