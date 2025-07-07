@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothSocket
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -19,7 +18,6 @@ import net.sharksystem.asap.ASAPEncounterManager
 import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.android.util.hasRequiredBluetoothPermissions
-import net.sharksystem.utils.streams.StreamPairImpl
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
@@ -28,13 +26,16 @@ class BleEngine(
     private val asapEncounterManager: ASAPEncounterManager,
     private val serviceUUID: UUID = UUID.fromString("00002657-0000-1000-8000-00805f9b34fb"),
     private val characteristicUUID: UUID = UUID.fromString("00004923-0000-1000-8000-00805f9b34fb"),
-    private val bluetoothAdapter: BluetoothAdapter? = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter
+    private val bluetoothAdapter: BluetoothAdapter? = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter,
+    private val bleSocketHandler: BleSocketHandler = BleSocketHandler(asapEncounterManager)
 ) {
-
     private var bleGattServerService: BleGattServerService? = null
+
     private val bleScanner: BleScanner =
         BleScanner(bluetoothAdapter!!, serviceUUID, ::onDeviceFound)
+
     private val openConnections: MutableMap<String, BleGattClient> = mutableMapOf()
+
     private val mutex = Mutex()
 
     fun start() {
@@ -71,11 +72,10 @@ class BleEngine(
     }
 
     private fun startGattServer() {
-        BleGattServerService.serviceUUID = serviceUUID
-        BleGattServerService.characteristicUUID = characteristicUUID
-        BleGattServerService.handleBtSocket = ::handleBTSocket
-
         val intent = Intent(context, BleGattServerService::class.java)
+        intent.putExtra(SERVICE_UUID, serviceUUID)
+        intent.putExtra(CHARACTERISTIC_UUID, characteristicUUID)
+
         context.bindService(intent, bleGattServerConnection, Context.BIND_AUTO_CREATE)
     }
 
@@ -101,24 +101,12 @@ class BleEngine(
                     device,
                     serviceUUID,
                     characteristicUUID,
-                    ::handleBTSocket
+                    bleSocketHandler,
                 )
                 openConnections[device.address] = bleGattClient
                 logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} isConnected: true\n"
             }
         }
-    }
-
-    private fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
-        val remoteMacAddress = socket.remoteDevice.address
-
-        val streamPair = StreamPairImpl.getStreamPairWithEndpointAddress(
-            socket.inputStream, socket.outputStream, remoteMacAddress
-        )
-
-        asapEncounterManager.handleEncounter(
-            streamPair, ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK, initiator
-        )
     }
 
     private fun isConnectionAlreadyEstablished(macAddress: String): Boolean {
@@ -146,6 +134,7 @@ class BleEngine(
             Log.d(this.getLogStart(), "Service connected")
             val binder = service as BleGattServerService.BleGattServerBinder
             bleGattServerService = binder.getService()
+            bleGattServerService?.setSuccessfulBleConnectionListener(bleSocketHandler)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {
@@ -155,6 +144,9 @@ class BleEngine(
     }
 
     companion object {
+        const val SERVICE_UUID = "serviceUuid"
+        const val CHARACTERISTIC_UUID = "characteristicUuid"
+
         // only used for demonstration purpose
         val logState: MutableStateFlow<String> = MutableStateFlow("")
     }

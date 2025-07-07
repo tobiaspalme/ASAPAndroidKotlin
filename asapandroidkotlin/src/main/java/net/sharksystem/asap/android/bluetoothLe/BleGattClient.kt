@@ -26,10 +26,11 @@ class BleGattClient(
     private val device: BluetoothDevice,
     private val serviceUUID: UUID,
     private val characteristicUUID: UUID,
-    private val handleBTSocket: (BluetoothSocket, Boolean) -> Unit,
+    private val bleSocketConnectionListener: BleSocketConnectionListener,
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
     var isDisconnected: Boolean = false
+
     private var gatt: BluetoothGatt? = null
 
     private val bluetoothGattCallback = object : BluetoothGattCallback() {
@@ -82,7 +83,7 @@ class BleGattClient(
                     this.getLogStart(),
                     "-----> Client accepted connection handle Encounter <-----"
                 )
-                handleBTSocket(socket, true)
+                bleSocketConnectionListener.onSuccessfulConnection(socket, true)
             }
         }
     }

@@ -11,13 +11,13 @@ import android.bluetooth.BluetoothGattServerCallback
 import android.bluetooth.BluetoothGattService
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
-import android.bluetooth.BluetoothSocket
 import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.BluetoothLeAdvertiser
 import android.content.Intent
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
 import android.os.ParcelUuid
 import android.util.Log
@@ -44,35 +44,35 @@ class BleGattServerService : Service() {
     private val advertiser: BluetoothLeAdvertiser
         get() = manager.adapter.bluetoothLeAdvertiser
 
-    private val service =
-        BluetoothGattService(serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY).also {
-            it.addCharacteristic(
-                BluetoothGattCharacteristic(
-                    characteristicUUID,
-                    BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                    BluetoothGattCharacteristic.PERMISSION_WRITE or BluetoothGattCharacteristic.PERMISSION_READ,
-                )
-            )
-        }
+    private var serviceUUID: UUID? = null
+
+    private var characteristicUUID: UUID? = null
 
     private lateinit var server: BluetoothGattServer
 
     private lateinit var serverSocket: BluetoothServerSocket
 
+    private lateinit var bleSocketConnectionListener: BleSocketConnectionListener
+
     private val scope = CoroutineScope(Dispatchers.IO)
 
+    override fun onBind(intent: Intent?): IBinder {
+        if (intent != null) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                serviceUUID = intent.getSerializableExtra(BleEngine.SERVICE_UUID, UUID::class.java)
+                characteristicUUID =
+                    intent.getSerializableExtra(BleEngine.CHARACTERISTIC_UUID, UUID::class.java)
+            } else {
+                serviceUUID = intent.getSerializableExtra(BleEngine.SERVICE_UUID) as UUID
+                characteristicUUID =
+                    intent.getSerializableExtra(BleEngine.CHARACTERISTIC_UUID) as UUID
+            }
+        }
+        startGattServer()
 
-    override fun onCreate() {
-        super.onCreate()
-
-        Log.d(this.getLogStart(), "Opening GATT server...")
-        server = manager.openGattServer(applicationContext, gattServerCallback)
-        server.addService(service)
-        startAdvertising()
-        startListenUsingServerSocket()
+        return binder
     }
 
-    @SuppressLint("MissingPermission")
     override fun onDestroy() {
         super.onDestroy()
 
@@ -80,6 +80,23 @@ class BleGattServerService : Service() {
         server.close()
         scope.cancel()
         Log.d(this.getLogStart(), "Server destroyed")
+    }
+
+    private fun startGattServer() {
+        Log.d(this.getLogStart(), "Opening GATT server...")
+        val service =
+            BluetoothGattService(serviceUUID, BluetoothGattService.SERVICE_TYPE_PRIMARY).also {
+                it.addCharacteristic(
+                    BluetoothGattCharacteristic(
+                        characteristicUUID,
+                        BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                        BluetoothGattCharacteristic.PERMISSION_WRITE or BluetoothGattCharacteristic.PERMISSION_READ,
+                    )
+                )
+            }
+        server = manager.openGattServer(applicationContext, gattServerCallback)
+        server.addService(service)
+        startAdvertising()
     }
 
     private fun startListenUsingServerSocket() {
@@ -90,7 +107,7 @@ class BleGattServerService : Service() {
         scope.launch {
             val socket = serverSocket.accept()
             Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
-            handleBtSocket?.invoke(socket, false)
+            bleSocketConnectionListener.onSuccessfulConnection(socket, false)
         }
     }
 
@@ -146,8 +163,11 @@ class BleGattServerService : Service() {
                 this.getLogStart(),
                 "Characteristic Read request characteristic: ${characteristic?.uuid}"
             )
-            val psmByteArray = ByteBuffer.allocate(Int.SIZE_BYTES).order(ByteOrder.BIG_ENDIAN)
-                .putInt(serverSocket.psm).array()
+            val psmByteArray = ByteBuffer
+                .allocate(Int.SIZE_BYTES)
+                .order(ByteOrder.BIG_ENDIAN)
+                .putInt(serverSocket.psm)
+                .array()
 
             server.sendResponse(
                 device,
@@ -169,15 +189,12 @@ class BleGattServerService : Service() {
         }
     }
 
-    override fun onBind(intent: Intent?): IBinder = binder
-
     inner class BleGattServerBinder : Binder() {
         fun getService() = this@BleGattServerService
     }
 
-    companion object {
-        var serviceUUID: UUID? = null
-        var characteristicUUID: UUID? = null
-        var handleBtSocket: ((BluetoothSocket, Boolean) -> Unit)? = null
+    fun setSuccessfulBleConnectionListener(bleSocketConnectionListener: BleSocketConnectionListener) {
+        this.bleSocketConnectionListener = bleSocketConnectionListener
+        startListenUsingServerSocket()
     }
 }
