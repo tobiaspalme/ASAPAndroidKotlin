@@ -10,6 +10,7 @@ import io.mockk.mockk
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import net.sharksystem.asap.android.bluetoothLe.scanner.BleScanner
 import org.junit.Before
 import org.junit.Test
 import java.util.UUID

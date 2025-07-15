@@ -1,4 +1,4 @@
-package net.sharksystem.asap.android.bluetoothLe
+package net.sharksystem.asap.android.bluetoothLe.scanner
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -16,12 +16,11 @@ import kotlinx.coroutines.launch
 import net.sharksystem.asap.android.util.getLogStart
 import java.util.UUID
 
-
 @SuppressLint("MissingPermission")
 class BleScanner(
     private val bluetoothAdapter: BluetoothAdapter,
     private val serviceUUID: UUID,
-    private val onDeviceFound: suspend (BluetoothDevice) -> Unit,
+    private val bleDeviceFoundListener: BleDeviceFoundListener,
     private val bleScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner,
     private val scanSettings: ScanSettings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build(),
@@ -50,7 +49,7 @@ class BleScanner(
                 "onScanResult: ${result.device} ${result.scanRecord?.serviceUuids}"
             )
             coroutineScope.launch {
-                onDeviceFound(result.device)
+                bleDeviceFoundListener.onDeviceFound(result.device)
             }
         }
 
