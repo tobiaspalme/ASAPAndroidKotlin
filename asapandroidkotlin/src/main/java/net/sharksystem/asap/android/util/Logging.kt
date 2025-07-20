@@ -7,6 +7,6 @@ fun Any.getLogStart(): String = this::class.java.simpleName
 
 fun getFormattedTimestamp(): String {
     val now = LocalDateTime.now()
-    val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+    val formatter = DateTimeFormatter.ofPattern("HH:mm:ss")
     return now.format(formatter)
 }

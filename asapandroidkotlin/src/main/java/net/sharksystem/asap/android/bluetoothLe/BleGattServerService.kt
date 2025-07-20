@@ -25,6 +25,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import net.sharksystem.asap.android.bluetoothLe.BleEngine.Companion.logState
+import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -54,6 +56,8 @@ class BleGattServerService : Service() {
 
     private lateinit var bleSocketConnectionListener: BleSocketConnectionListener
 
+    private val connectedDevices: MutableList<BluetoothDevice> = mutableListOf()
+
     private val scope = CoroutineScope(Dispatchers.IO)
 
     override fun onBind(intent: Intent?): IBinder {
@@ -77,6 +81,7 @@ class BleGattServerService : Service() {
         super.onDestroy()
 
         advertiser.stopAdvertising(GattServerAdvertiseCallback)
+        connectedDevices.forEach { server.cancelConnection(it) }
         server.close()
         scope.cancel()
         Log.d(this.getLogStart(), "Server destroyed")
@@ -105,9 +110,11 @@ class BleGattServerService : Service() {
         Log.d(this.getLogStart(), "PSM: ${serverSocket.psm}")
 
         scope.launch {
-            val socket = serverSocket.accept()
-            Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
-            bleSocketConnectionListener.onSuccessfulConnection(socket, false)
+            while(true){
+                val socket = serverSocket.accept()
+                Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
+                bleSocketConnectionListener.onSuccessfulConnection(socket, false)
+            }
         }
     }
 
@@ -136,17 +143,21 @@ class BleGattServerService : Service() {
         ) {
             when (newState) {
                 BluetoothGatt.STATE_CONNECTED -> {
+                    //logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} connected\n"
                     Log.d(
                         this.getLogStart(),
                         "${device.name} ${device.address} connected to gatt server"
                     )
+                    connectedDevices.add(device)
                 }
 
                 BluetoothGatt.STATE_DISCONNECTED -> {
+                    //logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} disconnected\n"
                     Log.d(
                         this.getLogStart(),
                         "${device.name} ${device.address} disconnected from gatt server"
                     )
+                    connectedDevices.remove(device)
                 }
             }
         }
@@ -185,7 +196,7 @@ class BleGattServerService : Service() {
         }
 
         override fun onStartFailure(errorCode: Int) {
-            Log.d(this.getLogStart(), "Failed to start advertising: $errorCode")
+            Log.e(this.getLogStart(), "Failed to start advertising: $errorCode")
         }
     }
 

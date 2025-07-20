@@ -45,7 +45,6 @@ class BleDeviceFoundHandler(
                     bleSocketConnectionListener,
                 )
                 openConnections[device.address] = bleGattClient
-                logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} isConnected: true\n"
             }
         }
     }
@@ -56,7 +55,6 @@ class BleDeviceFoundHandler(
             if (bleGattConnector.isDisconnected) {
                 Log.d(this.getLogStart(), "Connection not established anymore to $macAddress")
                 openConnections.remove(macAddress)
-                logState.value += "[${getFormattedTimestamp()}] Device: ${macAddress} isConnected: false\n"
                 return false
             } else {
                 Log.d(this.getLogStart(), "Connection already established to $macAddress")
@@ -65,5 +63,12 @@ class BleDeviceFoundHandler(
         } else {
             return false
         }
+    }
+
+    fun stop(){
+        openConnections.values.forEach { client ->
+            client.closeGatt()
+        }
+        openConnections.clear()
     }
 }

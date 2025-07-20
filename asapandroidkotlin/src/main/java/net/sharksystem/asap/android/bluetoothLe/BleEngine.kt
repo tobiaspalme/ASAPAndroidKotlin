@@ -39,22 +39,32 @@ class BleEngine(
     private val bleScanner: BleScanner =
         BleScanner(bluetoothAdapter!!, serviceUUID, bleDeviceFoundHandler)
 
-    private val openConnections: MutableMap<String, BleGattClient> = mutableMapOf()
-
-    private val mutex = Mutex()
+    private var isRunning: Boolean = false
 
     fun start() {
         Log.d(this.getLogStart(), "Starting BleEngine")
-        if (context.hasRequiredBluetoothPermissions()) {
-            setup()
+        if (isRunning.not()) {
+            if (context.hasRequiredBluetoothPermissions()) {
+                setup()
+                isRunning = true
+                logState.value += "BleEngine started\n"
+            } else {
+                Log.e(this.getLogStart(), "Bluetooth permissions not granted")
+            }
         } else {
-            Log.e(this.getLogStart(), "Bluetooth permissions not granted")
+            Log.w(this.getLogStart(), "BleEngine is already running")
         }
     }
 
     fun stop() {
-        Log.d(this.getLogStart(), "Stopping BleEngine")
-        shutdown()
+        if (isRunning) {
+            Log.d(this.getLogStart(), "Stopping BleEngine")
+            shutdown()
+            isRunning = false
+            logState.value += "BleEngine stopped\n"
+        } else {
+            Log.w(this.getLogStart(), "BleEngine is not running")
+        }
     }
 
     private fun setup() {
@@ -73,7 +83,7 @@ class BleEngine(
     private fun shutdown() {
         bleScanner.stopScan()
         stopGattServer()
-        openConnections.clear()
+        bleDeviceFoundHandler.stop()
     }
 
     private fun startGattServer() {

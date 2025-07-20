@@ -6,16 +6,14 @@ import android.bluetooth.BluetoothGatt
 import android.bluetooth.BluetoothGattCallback
 import android.bluetooth.BluetoothGattCharacteristic
 import android.bluetooth.BluetoothProfile
-import android.bluetooth.BluetoothSocket
 import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import net.sharksystem.asap.ASAPEncounterConnectionType
-import net.sharksystem.asap.ASAPEncounterManager
+import net.sharksystem.asap.android.bluetoothLe.BleEngine.Companion.logState
+import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
-import net.sharksystem.utils.streams.StreamPairImpl
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
@@ -38,12 +36,14 @@ class BleGattClient(
             when (newState) {
                 BluetoothProfile.STATE_CONNECTED -> {
                     Log.d(this.getLogStart(), "Connected to GATT server")
+                    logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} connected\n"
                     this@BleGattClient.gatt = gatt
                     gatt?.discoverServices()
                 }
 
                 BluetoothProfile.STATE_DISCONNECTED -> {
                     Log.d(this.getLogStart(), "Disconnected from GATT server")
+                    logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} disconnected\n"
                     isDisconnected = true
                     this@BleGattClient.gatt = null
                 }
@@ -86,6 +86,10 @@ class BleGattClient(
                 bleSocketConnectionListener.onSuccessfulConnection(socket, true)
             }
         }
+    }
+
+    fun closeGatt() {
+        gatt?.close()
     }
 
     init {

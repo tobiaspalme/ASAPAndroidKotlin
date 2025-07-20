@@ -1,12 +1,15 @@
 package net.sharksystem.asap.android.sample
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.Button
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
@@ -57,6 +60,16 @@ internal fun TestScreen() {
         }
     )
 
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        if (permissionsState.allPermissionsGranted) {
+            bleEngine.start()
+        }
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        bleEngine.stop()
+    }
+
     LaunchedEffect(permissionsState.allPermissionsGranted) {
         if (permissionsState.allPermissionsGranted) {
             bleEngine.start()
@@ -65,14 +78,14 @@ internal fun TestScreen() {
         }
     }
 
-    Column(
+    Box(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
     ) {
-        Row {
+        Row(
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
             Button(onClick = {
                 bleEngine.start()
             }) {
@@ -85,6 +98,13 @@ internal fun TestScreen() {
                 Text("STOP BleEngine")
             }
         }
-        Text(logs)
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(top = 72.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(logs)
+        }
     }
 }
