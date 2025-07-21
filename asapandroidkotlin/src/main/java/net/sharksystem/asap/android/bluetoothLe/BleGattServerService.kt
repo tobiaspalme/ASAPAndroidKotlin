@@ -25,8 +25,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import net.sharksystem.asap.android.bluetoothLe.BleEngine.Companion.logState
-import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

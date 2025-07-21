@@ -9,8 +9,8 @@ import android.content.Intent
 import android.content.ServiceConnection
 import android.os.IBinder
 import android.util.Log
+import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.sync.Mutex
 import net.sharksystem.asap.ASAPEncounterManager
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleDeviceFoundHandler
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleScanner
@@ -32,27 +32,23 @@ class BleEngine(
         serviceUUID,
         characteristicUUID,
         bleSocketHandler
+    ),
+    private val bleScanner: BleScanner = BleScanner(
+        bluetoothAdapter!!,
+        serviceUUID,
+        bleDeviceFoundHandler
     )
 ) {
     private var bleGattServerService: BleGattServerService? = null
-
-    private val bleScanner: BleScanner =
-        BleScanner(bluetoothAdapter!!, serviceUUID, bleDeviceFoundHandler)
 
     private var isRunning: Boolean = false
 
     fun start() {
         Log.d(this.getLogStart(), "Starting BleEngine")
-        if (isRunning.not()) {
-            if (context.hasRequiredBluetoothPermissions()) {
-                setup()
-                isRunning = true
-                logState.value += "BleEngine started\n"
-            } else {
-                Log.e(this.getLogStart(), "Bluetooth permissions not granted")
-            }
-        } else {
-            Log.w(this.getLogStart(), "BleEngine is already running")
+        if (areStartRequirementsMet()) {
+            setup()
+            isRunning = true
+            logState.value += "BleEngine started\n"
         }
     }
 
@@ -68,14 +64,6 @@ class BleEngine(
     }
 
     private fun setup() {
-        if (bluetoothAdapter == null) {
-            Log.e(this.getLogStart(), "Device does not support bluetooth ")
-            return
-        }
-        if (bluetoothAdapter.isEnabled.not()) {
-            Log.e(this.getLogStart(), "Bluetooth is currently disabled")
-            return
-        }
         startGattServer()
         startScanner()
     }
@@ -84,6 +72,28 @@ class BleEngine(
         bleScanner.stopScan()
         stopGattServer()
         bleDeviceFoundHandler.stop()
+    }
+
+    private fun areStartRequirementsMet(): Boolean {
+        if (isRunning) {
+            Log.w(this.getLogStart(), "BleEngine is already running")
+            return false
+        }
+
+        if (bluetoothAdapter == null) {
+            Log.e(this.getLogStart(), "Device does not support bluetooth ")
+            return false
+        }
+        if (bluetoothAdapter.isEnabled.not()) {
+            Log.e(this.getLogStart(), "Bluetooth is currently disabled")
+            return false
+        }
+
+        if (context.hasRequiredBluetoothPermissions().not()) {
+            Log.e(this.getLogStart(), "Bluetooth permissions not granted")
+            return false
+        }
+        return true
     }
 
     private fun startGattServer() {
@@ -118,6 +128,9 @@ class BleEngine(
         }
 
     }
+
+    @VisibleForTesting
+    fun getIsRunning() = isRunning
 
     companion object {
         const val SERVICE_UUID = "serviceUuid"
