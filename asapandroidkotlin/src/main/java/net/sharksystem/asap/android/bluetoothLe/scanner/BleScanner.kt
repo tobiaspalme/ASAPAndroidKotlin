@@ -2,7 +2,6 @@ package net.sharksystem.asap.android.bluetoothLe.scanner
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
 import android.bluetooth.le.BluetoothLeScanner
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanFilter
@@ -12,6 +11,7 @@ import android.os.ParcelUuid
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import net.sharksystem.asap.android.util.getLogStart
 import java.util.UUID
@@ -21,9 +21,9 @@ class BleScanner(
     private val bluetoothAdapter: BluetoothAdapter,
     private val serviceUUID: UUID,
     private val bleDeviceFoundListener: BleDeviceFoundListener,
-    private val bleScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner,
+    private val bluetoothLeScanner: BluetoothLeScanner = bluetoothAdapter.bluetoothLeScanner,
     private val scanSettings: ScanSettings = ScanSettings.Builder()
-        .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build(),
+        .setScanMode(ScanSettings.SCAN_MODE_BALANCED).build(),
     private val filter: ScanFilter = ScanFilter.Builder()
         .setServiceUuid(ParcelUuid(serviceUUID)).build(),
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
@@ -32,13 +32,14 @@ class BleScanner(
     fun startScan() {
         Log.d(this.getLogStart(), "Starting scan")
         coroutineScope.launch {
-            bleScanner.startScan(listOf(filter), scanSettings, leScanCallback)
+            bluetoothLeScanner.startScan(listOf(filter), scanSettings, leScanCallback)
         }
     }
 
     fun stopScan() {
         Log.d(this.getLogStart(), "Stopping scan")
-        bleScanner.stopScan(leScanCallback)
+        bluetoothLeScanner.stopScan(leScanCallback)
+        coroutineScope.cancel()
     }
 
     private val leScanCallback: ScanCallback = object : ScanCallback() {

@@ -120,7 +120,7 @@ class BleEngine(
             Log.d(this.getLogStart(), "Service connected")
             val binder = service as BleGattServerService.BleGattServerBinder
             bleGattServerService = binder.getService()
-            bleGattServerService?.setSuccessfulBleConnectionListener(bleSocketHandler)
+            bleGattServerService?.setBleSocketConnectionListener(bleSocketHandler)
         }
 
         override fun onServiceDisconnected(name: ComponentName?) {

@@ -36,7 +36,7 @@ class BleScannerTest {
             bluetoothAdapter = mockBluetoothAdapter,
             serviceUUID = mockServiceUuid,
             bleDeviceFoundListener = mockBleDeviceFoundListener,
-            bleScanner = mockBluetoothLeScanner,
+            bluetoothLeScanner = mockBluetoothLeScanner,
             scanSettings = mockScanSettings,
             filter = mockScanFilter,
             coroutineScope = mockCoroutineScope

@@ -141,7 +141,6 @@ class BleGattServerService : Service() {
         ) {
             when (newState) {
                 BluetoothGatt.STATE_CONNECTED -> {
-                    //logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} connected\n"
                     Log.d(
                         this.getLogStart(),
                         "${device.name} ${device.address} connected to gatt server"
@@ -150,7 +149,6 @@ class BleGattServerService : Service() {
                 }
 
                 BluetoothGatt.STATE_DISCONNECTED -> {
-                    //logState.value += "[${getFormattedTimestamp()}] Device: ${device.name} ${device.address} disconnected\n"
                     Log.d(
                         this.getLogStart(),
                         "${device.name} ${device.address} disconnected from gatt server"
@@ -202,7 +200,7 @@ class BleGattServerService : Service() {
         fun getService() = this@BleGattServerService
     }
 
-    fun setSuccessfulBleConnectionListener(bleSocketConnectionListener: BleSocketConnectionListener) {
+    fun setBleSocketConnectionListener(bleSocketConnectionListener: BleSocketConnectionListener) {
         this.bleSocketConnectionListener = bleSocketConnectionListener
         startListenUsingServerSocket()
     }
