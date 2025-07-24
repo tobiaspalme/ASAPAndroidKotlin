@@ -1,6 +1,5 @@
 package net.sharksystem.asap.android.sample
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -27,6 +26,7 @@ import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import net.sharksystem.asap.ASAP
 import net.sharksystem.asap.ASAPEncounterManagerImpl
+import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.BleEngine
 
 
@@ -36,7 +36,7 @@ internal fun TestScreen() {
     val peerId = ASAP.createUniqueID()
     val testASAPConnectionHandler = TestASAPConnectionHandler(peerId)
     val context = LocalContext.current
-    val bleEngine = remember {
+    val macLayerEngine: MacLayerEngine = remember {
         BleEngine(
             context,
             ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId)
@@ -62,17 +62,17 @@ internal fun TestScreen() {
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (permissionsState.allPermissionsGranted) {
-            bleEngine.start()
+            macLayerEngine.start()
         }
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        bleEngine.stop()
+        macLayerEngine.stop()
     }
 
     LaunchedEffect(permissionsState.allPermissionsGranted) {
         if (permissionsState.allPermissionsGranted) {
-            bleEngine.start()
+            macLayerEngine.start()
         } else {
             permissionsState.launchMultiplePermissionRequest()
         }
@@ -87,13 +87,13 @@ internal fun TestScreen() {
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
             Button(onClick = {
-                bleEngine.start()
+                macLayerEngine.start()
             }) {
                 Text("START BleEngine")
             }
             Spacer(Modifier.width(16.dp))
             Button(onClick = {
-                bleEngine.stop()
+                macLayerEngine.stop()
             }) {
                 Text("STOP BleEngine")
             }

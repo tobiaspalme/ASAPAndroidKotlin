@@ -12,18 +12,32 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.sharksystem.asap.ASAPEncounterManager
+import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleDeviceFoundHandler
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleScanner
 import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.android.util.hasRequiredBluetoothPermissions
 import java.util.UUID
 
+/**
+ * The BleEngine manages Bluetooth Low Energy (BLE) communication.
+ *
+ * This class handles the setup, starting, and stopping of BLE scanning,
+ * GATT server and GATT client functionalities.
+ * It integrates with [ASAPEncounterManager] to handle connections.
+ * The default parameters are used for testing purposes.
+ *
+ * @param context Application context.
+ * @param asapEncounterManager EncounterManager for handling ASAP encounters.
+ * @param serviceUUID UUID of the BLE service to advertise and scan for. Defaults to [MacLayerEngine.DEFAULT_SERVICE_UUID].
+ * @param characteristicUUID UUID of the BLE characteristic to use for communication. Defaults to [MacLayerEngine.DEFAULT_CHARACTERISTIC_UUID].
+ */
 @SuppressLint("MissingPermission")
 class BleEngine(
     private val context: Context,
     private val asapEncounterManager: ASAPEncounterManager,
-    private val serviceUUID: UUID = UUID.fromString("00002657-0000-1000-8000-00805f9b34fb"),
-    private val characteristicUUID: UUID = UUID.fromString("00004923-0000-1000-8000-00805f9b34fb"),
+    private val serviceUUID: UUID = MacLayerEngine.DEFAULT_SERVICE_UUID,
+    private val characteristicUUID: UUID = MacLayerEngine.DEFAULT_CHARACTERISTIC_UUID,
     private val bluetoothAdapter: BluetoothAdapter? = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter,
     private val bleSocketHandler: BleSocketHandler = BleSocketHandler(asapEncounterManager),
     private val bleDeviceFoundHandler: BleDeviceFoundHandler = BleDeviceFoundHandler(
@@ -38,12 +52,12 @@ class BleEngine(
         serviceUUID,
         bleDeviceFoundHandler
     )
-) {
+): MacLayerEngine {
     private var bleGattServerService: BleGattServerService? = null
 
     private var isRunning: Boolean = false
 
-    fun start() {
+    override fun start() {
         Log.d(this.getLogStart(), "Starting BleEngine")
         if (areStartRequirementsMet()) {
             setup()
@@ -52,7 +66,7 @@ class BleEngine(
         }
     }
 
-    fun stop() {
+    override fun stop() {
         if (isRunning) {
             Log.d(this.getLogStart(), "Stopping BleEngine")
             shutdown()
@@ -136,7 +150,9 @@ class BleEngine(
         const val SERVICE_UUID = "serviceUuid"
         const val CHARACTERISTIC_UUID = "characteristicUuid"
 
-        // only used for demonstration purpose
+        /**
+         * only used for demonstration purpose
+         */
         val logState: MutableStateFlow<String> = MutableStateFlow("")
     }
 }

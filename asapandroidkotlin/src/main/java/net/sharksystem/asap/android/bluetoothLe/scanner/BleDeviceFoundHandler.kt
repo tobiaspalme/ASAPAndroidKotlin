@@ -49,9 +49,9 @@ class BleDeviceFoundHandler(
     }
 
     private fun isConnectionAlreadyEstablished(macAddress: String): Boolean {
-        val bleGattConnector = openConnections[macAddress]
-        if (bleGattConnector != null) {
-            if (bleGattConnector.isDisconnected) {
+        val bleGattClient = openConnections[macAddress]
+        if (bleGattClient != null) {
+            if (bleGattClient.isDisconnected) {
                 Log.d(this.getLogStart(), "Connection not established anymore to $macAddress")
                 openConnections.remove(macAddress)
                 return false

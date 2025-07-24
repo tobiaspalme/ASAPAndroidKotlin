@@ -6,7 +6,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.content.ContextCompat
 
-
+/**
+ * This function returns whether the required bluetooth permissions are granted.
+ */
 fun Context.hasRequiredBluetoothPermissions(): Boolean {
     return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
         hasPermission(Manifest.permission.BLUETOOTH_SCAN) &&
