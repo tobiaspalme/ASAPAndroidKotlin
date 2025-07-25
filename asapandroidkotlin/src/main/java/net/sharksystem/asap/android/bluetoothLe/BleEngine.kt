@@ -3,18 +3,16 @@ package net.sharksystem.asap.android.bluetoothLe
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
-import android.content.ComponentName
 import android.content.Context
-import android.content.Intent
-import android.content.ServiceConnection
-import android.os.IBinder
 import android.util.Log
 import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.sharksystem.asap.ASAPEncounterManager
+import net.sharksystem.asap.android.BleGattServer
 import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleDeviceFoundHandler
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleScanner
+import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.android.util.hasRequiredBluetoothPermissions
 import java.util.UUID
@@ -38,6 +36,7 @@ class BleEngine(
     private val asapEncounterManager: ASAPEncounterManager,
     private val serviceUUID: UUID = MacLayerEngine.DEFAULT_SERVICE_UUID,
     private val characteristicUUID: UUID = MacLayerEngine.DEFAULT_CHARACTERISTIC_UUID,
+    private val waitBeforeReconnect: Long = MacLayerEngine.DEFAULT_WAIT_BEFORE_RECONNECT_TIME,
     private val bluetoothAdapter: BluetoothAdapter? = (context.getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager).adapter,
     private val bleSocketHandler: BleSocketHandler = BleSocketHandler(asapEncounterManager),
     private val bleDeviceFoundHandler: BleDeviceFoundHandler = BleDeviceFoundHandler(
@@ -45,15 +44,21 @@ class BleEngine(
         asapEncounterManager,
         serviceUUID,
         characteristicUUID,
-        bleSocketHandler
+        bleSocketHandler,
+        waitBeforeReconnect
     ),
     private val bleScanner: BleScanner = BleScanner(
         bluetoothAdapter!!,
         serviceUUID,
         bleDeviceFoundHandler
+    ),
+    private val bleGattServer: BleGattServer = BleGattServer(
+        context,
+        bleSocketHandler,
+        serviceUUID,
+        characteristicUUID
     )
-): MacLayerEngine {
-    private var bleGattServerService: BleGattServerService? = null
+) : MacLayerEngine {
 
     private var isRunning: Boolean = false
 
@@ -62,7 +67,7 @@ class BleEngine(
         if (areStartRequirementsMet()) {
             setup()
             isRunning = true
-            logState.value += "BleEngine started\n"
+            logState.value += "[${getFormattedTimestamp()}] BleEngine started\n"
         }
     }
 
@@ -71,7 +76,7 @@ class BleEngine(
             Log.d(this.getLogStart(), "Stopping BleEngine")
             shutdown()
             isRunning = false
-            logState.value += "BleEngine stopped\n"
+            logState.value += "[${getFormattedTimestamp()}] BleEngine stopped\n"
         } else {
             Log.w(this.getLogStart(), "BleEngine is not running")
         }
@@ -111,36 +116,15 @@ class BleEngine(
     }
 
     private fun startGattServer() {
-        val intent = Intent(context, BleGattServerService::class.java)
-        intent.putExtra(SERVICE_UUID, serviceUUID)
-        intent.putExtra(CHARACTERISTIC_UUID, characteristicUUID)
-
-        context.bindService(intent, bleGattServerConnection, Context.BIND_AUTO_CREATE)
+        bleGattServer.start()
     }
 
     private fun stopGattServer() {
-        context.unbindService(bleGattServerConnection)
+        bleGattServer.stop()
     }
 
     private fun startScanner() {
         bleScanner.startScan()
-    }
-
-    private val bleGattServerConnection = object : ServiceConnection {
-        override fun onServiceConnected(
-            name: ComponentName?,
-            service: IBinder?
-        ) {
-            Log.d(this.getLogStart(), "Service connected")
-            val binder = service as BleGattServerService.BleGattServerBinder
-            bleGattServerService = binder.getService()
-            bleGattServerService?.setBleSocketConnectionListener(bleSocketHandler)
-        }
-
-        override fun onServiceDisconnected(name: ComponentName?) {
-            Log.d(this.getLogStart(), "Service disconnected")
-        }
-
     }
 
     @VisibleForTesting

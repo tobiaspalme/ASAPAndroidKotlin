@@ -2,10 +2,13 @@ package net.sharksystem.asap.android.sample
 
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,22 +27,25 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import net.sharksystem.asap.ASAP
 import net.sharksystem.asap.ASAPEncounterManagerImpl
 import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.BleEngine
 
 
-@OptIn(ExperimentalPermissionsApi::class)
+@OptIn(ExperimentalPermissionsApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun TestScreen() {
     val peerId = ASAP.createUniqueID()
-    val testASAPConnectionHandler = TestASAPConnectionHandler(peerId)
+    val testASAPConnectionHandler = remember { TestASAPConnectionHandler(peerId) }
     val context = LocalContext.current
     val macLayerEngine: MacLayerEngine = remember {
         BleEngine(
             context,
-            ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId)
+            ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId, 5000)
         )
     }
     val logs by BleEngine.logState.collectAsState()
@@ -51,8 +57,8 @@ internal fun TestScreen() {
                 android.Manifest.permission.BLUETOOTH_CONNECT,
                 android.Manifest.permission.BLUETOOTH_ADVERTISE,
                 android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION ,
-                )
+                android.Manifest.permission.ACCESS_COARSE_LOCATION,
+            )
         } else {
             listOf(
                 android.Manifest.permission.ACCESS_FINE_LOCATION,
@@ -81,9 +87,10 @@ internal fun TestScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .safeDrawingPadding()
             .padding(16.dp),
     ) {
-        Row(
+        FlowRow(
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
             Button(onClick = {

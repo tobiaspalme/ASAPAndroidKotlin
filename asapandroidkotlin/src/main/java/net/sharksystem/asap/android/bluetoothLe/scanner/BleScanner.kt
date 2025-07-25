@@ -32,7 +32,11 @@ class BleScanner(
     fun startScan() {
         Log.d(this.getLogStart(), "Starting scan")
         coroutineScope.launch {
-            bluetoothLeScanner?.startScan(listOf(filter), scanSettings, leScanCallback)
+            if (bluetoothLeScanner == null) {
+                Log.e(this.getLogStart(), "BluetoothLeScanner is null")
+            } else {
+                bluetoothLeScanner.startScan(listOf(filter), scanSettings, leScanCallback)
+            }
         }
     }
 
@@ -47,7 +51,7 @@ class BleScanner(
             super.onScanResult(callbackType, result)
             Log.d(
                 this.getLogStart(),
-                "onScanResult: ${result.device} ${result.scanRecord?.serviceUuids}"
+                "----> onScanResult: ${result.device} ${result.scanRecord?.serviceUuids}"
             )
             coroutineScope.launch {
                 bleDeviceFoundListener.onDeviceFound(result.device)

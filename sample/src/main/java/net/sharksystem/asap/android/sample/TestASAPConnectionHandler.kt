@@ -3,12 +3,17 @@ package net.sharksystem.asap.android.sample
 import android.util.Log
 import net.sharksystem.asap.ASAPConnectionHandler
 import net.sharksystem.asap.ASAPEncounterConnectionType
+import net.sharksystem.asap.android.bluetoothLe.BleEngine
 import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.protocol.ASAPConnection
 import java.io.InputStream
 import java.io.OutputStream
 
 class TestASAPConnectionHandler(private val peerId: CharSequence) : ASAPConnectionHandler {
+
+    private var inputStream: InputStream? = null
+    private var outputStream: OutputStream? = null
+
     override fun handleConnection(
         p0: InputStream?,
         p1: OutputStream?,
@@ -41,6 +46,8 @@ class TestASAPConnectionHandler(private val peerId: CharSequence) : ASAPConnecti
         p1: OutputStream?,
         p2: ASAPEncounterConnectionType?
     ): ASAPConnection {
+        inputStream = p0
+        outputStream = p1
         return TestASAPConnection(peerId)
     }
 }

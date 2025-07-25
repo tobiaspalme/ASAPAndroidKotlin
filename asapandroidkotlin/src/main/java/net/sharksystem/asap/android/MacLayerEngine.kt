@@ -24,5 +24,6 @@ interface MacLayerEngine {
         val DEFAULT_SERVICE_UUID: UUID = UUID.fromString("00002657-0000-1000-8000-00805f9b34fb")
         val DEFAULT_CHARACTERISTIC_UUID: UUID =
             UUID.fromString("00004923-0000-1000-8000-00805f9b34fb")
+        const val DEFAULT_WAIT_BEFORE_RECONNECT_TIME: Long = 5000
     }
 }

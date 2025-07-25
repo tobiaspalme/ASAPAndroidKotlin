@@ -1,7 +1,6 @@
-package net.sharksystem.asap.android.bluetoothLe
+package net.sharksystem.asap.android
 
 import android.annotation.SuppressLint
-import android.app.Service
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGatt
@@ -15,74 +14,53 @@ import android.bluetooth.le.AdvertiseCallback
 import android.bluetooth.le.AdvertiseData
 import android.bluetooth.le.AdvertiseSettings
 import android.bluetooth.le.BluetoothLeAdvertiser
-import android.content.Intent
-import android.os.Binder
-import android.os.Build
-import android.os.IBinder
+import android.content.Context
 import android.os.ParcelUuid
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import net.sharksystem.asap.android.bluetoothLe.BleSocketConnectionListener
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
 @SuppressLint("MissingPermission")
-class BleGattServerService : Service() {
+class BleGattServer(
+    private val context: Context,
+    private val bleSocketConnectionListener: BleSocketConnectionListener,
+    private val serviceUUID: UUID,
+    private val characteristicUUID: UUID,
+    private val bluetoothManager: BluetoothManager = context.getSystemService(BluetoothManager::class.java),
+    private val adapter: BluetoothAdapter = bluetoothManager.adapter,
+    private val advertiser: BluetoothLeAdvertiser? = bluetoothManager.adapter.bluetoothLeAdvertiser,
+    private val scope: CoroutineScope = CoroutineScope(Dispatchers.IO)
+) {
 
-    private val binder = BleGattServerBinder()
-
-    private val manager: BluetoothManager by lazy {
-        applicationContext.getSystemService(BluetoothManager::class.java)
-    }
-    private val adapter: BluetoothAdapter
-        get() = manager.adapter
-
-    private val advertiser: BluetoothLeAdvertiser
-        get() = manager.adapter.bluetoothLeAdvertiser
-
-    private var serviceUUID: UUID? = null
-
-    private var characteristicUUID: UUID? = null
-
-    private lateinit var server: BluetoothGattServer
+    private var gattServer: BluetoothGattServer? = null
 
     private lateinit var serverSocket: BluetoothServerSocket
 
-    private lateinit var bleSocketConnectionListener: BleSocketConnectionListener
+    private lateinit var gattServerJob2: Job
 
     private val connectedDevices: MutableList<BluetoothDevice> = mutableListOf()
 
-    private val scope = CoroutineScope(Dispatchers.IO)
 
-    override fun onBind(intent: Intent?): IBinder {
-        if (intent != null) {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                serviceUUID = intent.getSerializableExtra(BleEngine.SERVICE_UUID, UUID::class.java)
-                characteristicUUID =
-                    intent.getSerializableExtra(BleEngine.CHARACTERISTIC_UUID, UUID::class.java)
-            } else {
-                serviceUUID = intent.getSerializableExtra(BleEngine.SERVICE_UUID) as UUID
-                characteristicUUID =
-                    intent.getSerializableExtra(BleEngine.CHARACTERISTIC_UUID) as UUID
-            }
-        }
+    fun start() {
         startGattServer()
-
-        return binder
+        startAdvertising()
+        startListenUsingServerSocket()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-
-        advertiser.stopAdvertising(GattServerAdvertiseCallback)
-        connectedDevices.forEach { server.cancelConnection(it) }
-        server.close()
-        scope.cancel()
-        Log.d(this.getLogStart(), "Server destroyed")
+    fun stop() {
+        advertiser?.stopAdvertising(GattServerAdvertiseCallback)
+        connectedDevices.forEach { gattServer?.cancelConnection(it) }
+        gattServer?.close()
+        gattServer = null
+        gattServerJob2.cancel()
     }
 
     private fun startGattServer() {
@@ -97,23 +75,8 @@ class BleGattServerService : Service() {
                     )
                 )
             }
-        server = manager.openGattServer(applicationContext, gattServerCallback)
-        server.addService(service)
-        startAdvertising()
-    }
-
-    private fun startListenUsingServerSocket() {
-        Log.d(this.getLogStart(), "Start Listening")
-        serverSocket = adapter.listenUsingInsecureL2capChannel()
-        Log.d(this.getLogStart(), "PSM: ${serverSocket.psm}")
-
-        scope.launch {
-            while(true){
-                val socket = serverSocket.accept()
-                Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
-                bleSocketConnectionListener.onSuccessfulConnection(socket, false)
-            }
-        }
+        gattServer = bluetoothManager.openGattServer(context, gattServerCallback)
+        gattServer?.addService(service)
     }
 
     private fun startAdvertising() {
@@ -130,7 +93,29 @@ class BleGattServerService : Service() {
             .build()
 
         Log.d(this.getLogStart(), "Start advertising")
-        advertiser.startAdvertising(settings, data, GattServerAdvertiseCallback)
+        if (advertiser == null) {
+            Log.e(this.getLogStart(), "Advertiser is null")
+        } else {
+            advertiser.startAdvertising(settings, data, GattServerAdvertiseCallback)
+        }
+    }
+
+    private fun startListenUsingServerSocket() {
+        Log.d(this.getLogStart(), "Start Listening")
+        serverSocket = adapter.listenUsingInsecureL2capChannel()
+        Log.d(this.getLogStart(), "PSM: ${serverSocket.psm}")
+
+        gattServerJob2 = scope.launch {
+            while (true) {
+                try {
+                    val socket = serverSocket.accept()
+                    Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
+                    bleSocketConnectionListener.onSuccessfulConnection(socket, false)
+                }catch (e: Exception){
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
@@ -143,7 +128,7 @@ class BleGattServerService : Service() {
                 BluetoothGatt.STATE_CONNECTED -> {
                     Log.d(
                         this.getLogStart(),
-                        "${device.name} ${device.address} connected to gatt server"
+                        "----> ${device.name} ${device.address} connected to gatt server"
                     )
                     connectedDevices.add(device)
                 }
@@ -151,11 +136,12 @@ class BleGattServerService : Service() {
                 BluetoothGatt.STATE_DISCONNECTED -> {
                     Log.d(
                         this.getLogStart(),
-                        "${device.name} ${device.address} disconnected from gatt server"
+                        "----> ${device.name} ${device.address} disconnected from gatt server"
                     )
                     connectedDevices.remove(device)
                 }
             }
+            Log.d(this.getLogStart(), "connectedDevices: $connectedDevices")
         }
 
         override fun onCharacteristicReadRequest(
@@ -176,7 +162,7 @@ class BleGattServerService : Service() {
                 .putInt(serverSocket.psm)
                 .array()
 
-            server.sendResponse(
+            gattServer?.sendResponse(
                 device,
                 requestId,
                 BluetoothGatt.GATT_SUCCESS,
@@ -186,7 +172,7 @@ class BleGattServerService : Service() {
         }
     }
 
-    object GattServerAdvertiseCallback : AdvertiseCallback() {
+    private object GattServerAdvertiseCallback : AdvertiseCallback() {
         override fun onStartSuccess(settingsInEffect: AdvertiseSettings?) {
             Log.d(this.getLogStart(), "Started advertising")
         }
@@ -196,12 +182,4 @@ class BleGattServerService : Service() {
         }
     }
 
-    inner class BleGattServerBinder : Binder() {
-        fun getService() = this@BleGattServerService
-    }
-
-    fun setBleSocketConnectionListener(bleSocketConnectionListener: BleSocketConnectionListener) {
-        this.bleSocketConnectionListener = bleSocketConnectionListener
-        startListenUsingServerSocket()
-    }
 }
