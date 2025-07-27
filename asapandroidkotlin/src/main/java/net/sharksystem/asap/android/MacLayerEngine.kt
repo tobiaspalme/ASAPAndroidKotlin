@@ -16,7 +16,7 @@ interface MacLayerEngine {
 
     /**
      * Call this function to stop the layer 2 engine.
-     * This function stops the discovery process and disconnects from every device.
+     * Stops the discovery process and disconnects from every device.
      */
     fun stop()
 

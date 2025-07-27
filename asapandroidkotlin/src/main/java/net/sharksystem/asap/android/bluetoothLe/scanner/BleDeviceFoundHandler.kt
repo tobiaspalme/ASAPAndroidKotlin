@@ -7,7 +7,6 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import net.sharksystem.asap.ASAPEncounterManager
 import net.sharksystem.asap.android.bluetoothLe.BleGattClient
 import net.sharksystem.asap.android.bluetoothLe.BleSocketConnectionListener
 import net.sharksystem.asap.android.util.getLogStart
@@ -17,7 +16,6 @@ import java.util.UUID
 @SuppressLint("MissingPermission")
 class BleDeviceFoundHandler(
     private val context: Context,
-    private val asapEncounterManager: ASAPEncounterManager,
     private val serviceUUID: UUID,
     private val characteristicUUID: UUID,
     private val bleSocketConnectionListener: BleSocketConnectionListener,
@@ -32,8 +30,14 @@ class BleDeviceFoundHandler(
 
     override suspend fun onDeviceFound(device: BluetoothDevice) {
         mutex.withLock {
+            cleanUpConnections()
             val isConnectionAlreadyEstablished = isConnectionAlreadyEstablished(device.address)
             val shouldConnectToMACPeer = shouldConnectToMACPeer(device.address)
+
+            Log.d(
+                this.getLogStart(),
+                "----> onDeviceFound: ${device.name} | isConnectionAlreadyEstablished: $isConnectionAlreadyEstablished | shouldConnectToMACPeer: $shouldConnectToMACPeer"
+            )
 
             if (isConnectionAlreadyEstablished.not() && shouldConnectToMACPeer) {
                 val bleGattClient = BleGattClient(
@@ -48,53 +52,49 @@ class BleDeviceFoundHandler(
         }
     }
 
-    private fun isConnectionAlreadyEstablished(macAddress: String): Boolean {
-        val bleGattClient = openConnections[macAddress]
-        if (bleGattClient != null) {
-            if (bleGattClient.isDisconnected) {
-                Log.d(this.getLogStart(), "Connection already disconnected to $macAddress")
-                bleGattClient.closeGatt()
-                openConnections.remove(macAddress)
-                return false
+    private fun cleanUpConnections() {
+        openConnections.values.forEach { client ->
+            if (client.isDisconnected) {
+                Log.d(this.getLogStart(), "Connection is disconnected to ${client.device.address}")
+                client.closeGatt()
             }
-            if (bleGattClient.bluetoothSocket == null) {
+            if (client.bluetoothSocket == null) {
                 Log.d(this.getLogStart(), "bluetoothSocket is pending")
-                return true
             }
-            if (bleGattClient.bluetoothSocket?.isConnected?.not() == true) {
-                Log.d(this.getLogStart(), "Connection not established anymore to $macAddress")
-                bleGattClient.closeGatt()
-                openConnections.remove(macAddress)
-                return false
-            } else {
+            if (client.bluetoothSocket?.isConnected?.not() == true) {
                 Log.d(
                     this.getLogStart(),
-                    "Connection already established to $macAddress"
+                    "Connection not established anymore to ${client.device.address}"
                 )
-                return true
+                client.closeGatt()
             }
-        } else {
-            return false
         }
+        // This approach is used to avoid a potential ConcurrentModificationException
+        openConnections.values.removeIf { it.isDisconnected || it.bluetoothSocket?.isConnected?.not() == true }
+    }
+
+    private fun isConnectionAlreadyEstablished(macAddress: String): Boolean {
+        val client = openConnections[macAddress] ?: return false
+        return client.isDisconnected.not()
     }
 
     private fun shouldConnectToMACPeer(macAddress: String): Boolean {
         val now = Date()
-        val lastEncounter = this.encounteredDevices[macAddress]
+        val lastEncounter = encounteredDevices[macAddress]
 
         if (lastEncounter == null) {
-            Log.d(this.getLogStart(), "device not in encounteredDevices - should connect")
-            this.encounteredDevices.put(macAddress, now)
+            Log.d(this.getLogStart(), "device not in encounteredDevices")
+            encounteredDevices.put(macAddress, now)
             return true
         }
 
         val nowInMillis = System.currentTimeMillis()
-        val reconnectedBeforeInMillis: Long = nowInMillis - this.waitBeforeReconnect
+        val reconnectedBeforeInMillis: Long = nowInMillis - waitBeforeReconnect
         val reconnectBefore = Date(reconnectedBeforeInMillis)
 
         if (lastEncounter.before(reconnectBefore)) {
-            Log.d(this.getLogStart(), "yes - should connect: $macAddress")
-            this.encounteredDevices.put(macAddress, now)
+            Log.d(this.getLogStart(), "should connect - not recently met: $macAddress")
+            encounteredDevices.put(macAddress, now)
             return true
         }
 

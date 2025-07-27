@@ -13,18 +13,26 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import net.sharksystem.asap.android.bluetoothLe.BleEngine.Companion.logState
-import net.sharksystem.asap.android.util.getFormattedTimestamp
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
-import kotlin.math.log
 
+
+/**
+ * Manages the Bluetooth Low Energy (BLE) GATT client connection to a remote device
+ *
+ * @param context application context
+ * @param device The [BluetoothDevice] to connect to
+ * @param serviceUUID UUID of the GATT service to interact with
+ * @param characteristicUUID UUID of the GATT characteristic to read the PSM from
+ * @param bleSocketConnectionListener A listener to be notified about successful connection
+ * @param coroutineScope CoroutineScope, defaults to `CoroutineScope(Dispatchers.IO)`
+ */
 @SuppressLint("MissingPermission")
 class BleGattClient(
-    private val context: Context,
-    private val device: BluetoothDevice,
+    context: Context,
+    val device: BluetoothDevice,
     private val serviceUUID: UUID,
     private val characteristicUUID: UUID,
     private val bleSocketConnectionListener: BleSocketConnectionListener,
@@ -40,7 +48,6 @@ class BleGattClient(
 
             if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 Log.i(this.getLogStart(), "---> Client: Successfully connected to ${device.name}.")
-                logState.value += "[${getFormattedTimestamp()}] Client: Successfully connected to ${device.name}\n"
 
                 gatt?.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
@@ -49,12 +56,13 @@ class BleGattClient(
                         this.getLogStart(),
                         "----> Client: Disconnected from ${device.name} with error status $status"
                     )
-                    logState.value += "[${getFormattedTimestamp()}] Client: Disconnected from ${device.name} with error status $status\n"
                     isDisconnected = true
                     this@BleGattClient.gatt = null
                 } else {
-                    Log.d(this.getLogStart(), "----> Client: Cleanly disconnected from ${device.name}")
-                    logState.value += "[${getFormattedTimestamp()}] Client: Cleanly disconnected from ${device.name}\n"
+                    Log.d(
+                        this.getLogStart(),
+                        "----> Client: Cleanly disconnected from ${device.name}"
+                    )
                     isDisconnected = true
                     this@BleGattClient.gatt = null
                 }
@@ -110,20 +118,31 @@ class BleGattClient(
 
         bluetoothSocket = device.createInsecureL2capChannel(readResult)
         coroutineScope.launch {
-            bluetoothSocket?.connect()
-            Log.d(
-                this.getLogStart(),
-                "Client accepted connection -> handle Encounter"
-            )
-            bleSocketConnectionListener.onSuccessfulConnection(bluetoothSocket!!, true)
+            try {
+                bluetoothSocket?.connect()
+                Log.d(
+                    this.getLogStart(),
+                    "Client started connection -> handle Encounter"
+                )
+                bleSocketConnectionListener.onSuccessfulConnection(bluetoothSocket!!, true)
+            } catch (e: Exception) {
+                Log.e(this.getLogStart(), "L2CAP connection failed: ${e.message}")
+                closeGatt()
+            }
         }
     }
 
     fun closeGatt() {
         coroutineScope.launch {
+            bluetoothSocket?.close()
+            bluetoothSocket == null
+
             gatt?.disconnect()
-            delay(1000)
+            delay(300)
+
             gatt?.close()
+            gatt == null
+            isDisconnected = true
         }
     }
 

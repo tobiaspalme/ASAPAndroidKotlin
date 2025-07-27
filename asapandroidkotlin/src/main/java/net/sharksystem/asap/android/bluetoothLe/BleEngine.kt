@@ -8,7 +8,6 @@ import android.util.Log
 import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.flow.MutableStateFlow
 import net.sharksystem.asap.ASAPEncounterManager
-import net.sharksystem.asap.android.BleGattServer
 import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleDeviceFoundHandler
 import net.sharksystem.asap.android.bluetoothLe.scanner.BleScanner
@@ -22,7 +21,7 @@ import java.util.UUID
  *
  * This class handles the setup, starting, and stopping of BLE scanning,
  * GATT server and GATT client functionalities.
- * It integrates with [ASAPEncounterManager] to handle connections.
+ * It uses the [ASAPEncounterManager] to handle connections.
  * The default parameters are used for testing purposes.
  *
  * @param context Application context.
@@ -41,7 +40,6 @@ class BleEngine(
     private val bleSocketHandler: BleSocketHandler = BleSocketHandler(asapEncounterManager),
     private val bleDeviceFoundHandler: BleDeviceFoundHandler = BleDeviceFoundHandler(
         context,
-        asapEncounterManager,
         serviceUUID,
         characteristicUUID,
         bleSocketHandler,
@@ -131,8 +129,6 @@ class BleEngine(
     fun getIsRunning() = isRunning
 
     companion object {
-        const val SERVICE_UUID = "serviceUuid"
-        const val CHARACTERISTIC_UUID = "characteristicUuid"
 
         /**
          * only used for demonstration purpose

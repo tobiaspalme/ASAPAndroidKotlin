@@ -11,11 +11,13 @@ import android.os.ParcelUuid
 import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import net.sharksystem.asap.android.util.getLogStart
 import java.util.UUID
 
+/**
+ * Scans for nearby Bluetooth Low Energy (BLE) devices that advertise a specific service UUID
+ */
 @SuppressLint("MissingPermission")
 class BleScanner(
     private val bluetoothAdapter: BluetoothAdapter,
@@ -29,6 +31,9 @@ class BleScanner(
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)
 ) {
 
+    /**
+     * Starts scanning for BLE devices that advertise a specified service UUID
+     */
     fun startScan() {
         Log.d(this.getLogStart(), "Starting scan")
         coroutineScope.launch {
@@ -40,10 +45,14 @@ class BleScanner(
         }
     }
 
+    /**
+     * Stops scanning for BLE devices
+     */
     fun stopScan() {
         Log.d(this.getLogStart(), "Stopping scan")
-        bluetoothLeScanner?.stopScan(leScanCallback)
-        coroutineScope.cancel()
+        coroutineScope.launch {
+            bluetoothLeScanner?.stopScan(leScanCallback)
+        }
     }
 
     private val leScanCallback: ScanCallback = object : ScanCallback() {

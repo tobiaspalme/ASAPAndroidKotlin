@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -27,9 +26,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import net.sharksystem.asap.ASAP
 import net.sharksystem.asap.ASAPEncounterManagerImpl
 import net.sharksystem.asap.android.MacLayerEngine
@@ -41,11 +37,15 @@ import net.sharksystem.asap.android.bluetoothLe.BleEngine
 internal fun TestScreen() {
     val peerId = ASAP.createUniqueID()
     val testASAPConnectionHandler = remember { TestASAPConnectionHandler(peerId) }
+    val testASAPEncounterManager =
+        remember { ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId, 5000) }
+
     val context = LocalContext.current
+
     val macLayerEngine: MacLayerEngine = remember {
         BleEngine(
             context,
-            ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId, 5000)
+            testASAPEncounterManager
         )
     }
     val logs by BleEngine.logState.collectAsState()

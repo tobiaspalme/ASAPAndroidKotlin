@@ -1,4 +1,4 @@
-package net.sharksystem.asap.android
+package net.sharksystem.asap.android.bluetoothLe
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothAdapter
@@ -20,14 +20,28 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
-import net.sharksystem.asap.android.bluetoothLe.BleSocketConnectionListener
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.util.UUID
 
+
+/**
+ * Represents a Bluetooth Low Energy (BLE) GATT server.
+ *
+ * When a client reads the characteristic, the server responds with its L2CAP Protocol/Service Multiplexer (PSM) value.
+ * This PSM value is then used by the client to establish an L2CAP connection for data transfer.
+ *
+ * @property context application context
+ * @property bleSocketConnectionListener A listener to be notified about successful connection
+ * @property serviceUUID UUID of the GATT service to be offered by this server
+ * @property characteristicUUID UUID of the GATT characteristic within the service
+ * @property bluetoothManager BluetoothManager instance
+ * @property adapter BluetoothAdapter instance
+ * @property advertiser BluetoothLeAdvertiser instance
+ * @property scope CoroutineScope, defaulting to `CoroutineScope(Dispatchers.IO)`
+ */
 @SuppressLint("MissingPermission")
 class BleGattServer(
     private val context: Context,
@@ -49,12 +63,18 @@ class BleGattServer(
     private val connectedDevices: MutableList<BluetoothDevice> = mutableListOf()
 
 
+    /**
+     * Starts the GATT server, advertising, and listening for incoming connections.
+     */
     fun start() {
         startGattServer()
         startAdvertising()
         startListenUsingServerSocket()
     }
 
+    /**
+     * Stops the GATT server and advertising.
+     */
     fun stop() {
         advertiser?.stopAdvertising(GattServerAdvertiseCallback)
         connectedDevices.forEach { gattServer?.cancelConnection(it) }
@@ -103,7 +123,6 @@ class BleGattServer(
     private fun startListenUsingServerSocket() {
         Log.d(this.getLogStart(), "Start Listening")
         serverSocket = adapter.listenUsingInsecureL2capChannel()
-        Log.d(this.getLogStart(), "PSM: ${serverSocket.psm}")
 
         gattServerJob2 = scope.launch {
             while (true) {
@@ -111,7 +130,7 @@ class BleGattServer(
                     val socket = serverSocket.accept()
                     Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
                     bleSocketConnectionListener.onSuccessfulConnection(socket, false)
-                }catch (e: Exception){
+                } catch (e: Exception) {
                     e.printStackTrace()
                 }
             }
@@ -126,17 +145,17 @@ class BleGattServer(
         ) {
             when (newState) {
                 BluetoothGatt.STATE_CONNECTED -> {
-                    Log.d(
+                    Log.i(
                         this.getLogStart(),
-                        "----> ${device.name} ${device.address} connected to gatt server"
+                        "----> Server: ${device.name} ${device.address} connected to gatt server"
                     )
                     connectedDevices.add(device)
                 }
 
                 BluetoothGatt.STATE_DISCONNECTED -> {
-                    Log.d(
+                    Log.i(
                         this.getLogStart(),
-                        "----> ${device.name} ${device.address} disconnected from gatt server"
+                        "----> Server: ${device.name} ${device.address} disconnected from gatt server"
                     )
                     connectedDevices.remove(device)
                 }

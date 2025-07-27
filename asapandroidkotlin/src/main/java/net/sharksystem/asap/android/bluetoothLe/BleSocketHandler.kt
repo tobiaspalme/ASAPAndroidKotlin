@@ -19,6 +19,7 @@ class BleSocketHandler(
         handleBTSocket(bluetoothSocket, initiator)
     }
 
+    @SuppressLint("NewApi")
     private fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
         val remoteMacAddress = socket.remoteDevice.address
 
@@ -31,9 +32,9 @@ class BleSocketHandler(
                 streamPair, ASAPEncounterConnectionType.AD_HOC_LAYER_2_NETWORK, initiator
             )
             if (socket.isConnected) {
-                BleEngine.logState.value += "[${getFormattedTimestamp()}] Socket created to [${socket.remoteDevice.name}] with initiator: $initiator\n"
+                BleEngine.logState.value += "[${getFormattedTimestamp()}] Socket created to [${socket.remoteDevice.name}, ${socket.remoteDevice.address}] with initiator: $initiator\n"
             } else {
-                BleEngine.logState.value += "[${getFormattedTimestamp()}] Socket already exits to [${socket.remoteDevice.name}]\n"
+                BleEngine.logState.value += "[${getFormattedTimestamp()}] EncounterManager closed connection to [${socket.remoteDevice.name}, ${socket.remoteDevice.address}]\n"
             }
         } catch (e: Exception) {
             e.printStackTrace()

@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.compose.foundation)
     implementation(libs.androidx.compose.material)
     implementation(libs.androidx.compose.runtime)
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)

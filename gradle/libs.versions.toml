@@ -7,6 +7,7 @@ coroutines = "1.10.2"
 dokka = "2.0.0"
 kotlin = "2.0.21"
 coreKtx = "1.16.0"
+lifecycle-runtime = "2.9.1"
 junit = "4.13.2"
 junitVersion = "1.2.1"
 espressoCore = "3.6.1"
@@ -24,6 +25,7 @@ androidx-activity-compose = { group = "androidx.activity", name = "activity-comp
 androidx-compose-material = { group = "androidx.compose.material", name = "material" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
+androidx-lifecycle-viewmodel-compose = { module = "androidx.lifecycle:lifecycle-viewmodel-compose", version.ref = "lifecycle-runtime" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
 androidx-appcompat = { group = "androidx.appcompat", name = "appcompat", version.ref = "appcompat" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
