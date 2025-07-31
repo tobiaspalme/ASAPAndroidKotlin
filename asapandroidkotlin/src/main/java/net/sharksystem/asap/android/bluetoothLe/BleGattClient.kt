@@ -135,13 +135,13 @@ class BleGattClient(
     fun closeGatt() {
         coroutineScope.launch {
             bluetoothSocket?.close()
-            bluetoothSocket == null
+            bluetoothSocket = null
 
             gatt?.disconnect()
             delay(300)
 
             gatt?.close()
-            gatt == null
+            gatt = null
             isDisconnected = true
         }
     }

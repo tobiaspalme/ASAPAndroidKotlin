@@ -24,30 +24,22 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
 import net.sharksystem.asap.ASAP
 import net.sharksystem.asap.ASAPEncounterManagerImpl
 import net.sharksystem.asap.android.MacLayerEngine
 import net.sharksystem.asap.android.bluetoothLe.BleEngine
+import org.koin.compose.koinInject
 
 
 @OptIn(ExperimentalPermissionsApi::class, ExperimentalLayoutApi::class)
 @Composable
 internal fun TestScreen() {
-    val peerId = ASAP.createUniqueID()
-    val testASAPConnectionHandler = remember { TestASAPConnectionHandler(peerId) }
-    val testASAPEncounterManager =
-        remember { ASAPEncounterManagerImpl(testASAPConnectionHandler, peerId, 5000) }
 
-    val context = LocalContext.current
+    val viewModel = koinInject<TestScreenViewModel>()
 
-    val macLayerEngine: MacLayerEngine = remember {
-        BleEngine(
-            context,
-            testASAPEncounterManager
-        )
-    }
     val logs by BleEngine.logState.collectAsState()
 
     val permissionsState = rememberMultiplePermissionsState(
@@ -56,8 +48,6 @@ internal fun TestScreen() {
                 android.Manifest.permission.BLUETOOTH_SCAN,
                 android.Manifest.permission.BLUETOOTH_CONNECT,
                 android.Manifest.permission.BLUETOOTH_ADVERTISE,
-                android.Manifest.permission.ACCESS_FINE_LOCATION,
-                android.Manifest.permission.ACCESS_COARSE_LOCATION,
             )
         } else {
             listOf(
@@ -68,17 +58,17 @@ internal fun TestScreen() {
 
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         if (permissionsState.allPermissionsGranted) {
-            macLayerEngine.start()
+            viewModel.start()
         }
     }
 
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
-        macLayerEngine.stop()
+        viewModel.stop()
     }
 
     LaunchedEffect(permissionsState.allPermissionsGranted) {
         if (permissionsState.allPermissionsGranted) {
-            macLayerEngine.start()
+            viewModel.start()
         } else {
             permissionsState.launchMultiplePermissionRequest()
         }
@@ -94,13 +84,13 @@ internal fun TestScreen() {
             modifier = Modifier.align(Alignment.TopCenter),
         ) {
             Button(onClick = {
-                macLayerEngine.start()
+                viewModel.start()
             }) {
                 Text("START BleEngine")
             }
             Spacer(Modifier.width(16.dp))
             Button(onClick = {
-                macLayerEngine.stop()
+                viewModel.stop()
             }) {
                 Text("STOP BleEngine")
             }

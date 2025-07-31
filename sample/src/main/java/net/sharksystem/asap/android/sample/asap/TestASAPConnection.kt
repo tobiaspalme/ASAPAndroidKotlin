@@ -1,4 +1,4 @@
-package net.sharksystem.asap.android.sample
+package net.sharksystem.asap.android.sample.asap
 
 import net.sharksystem.asap.ASAPEncounterConnectionType
 import net.sharksystem.asap.protocol.ASAPConnection

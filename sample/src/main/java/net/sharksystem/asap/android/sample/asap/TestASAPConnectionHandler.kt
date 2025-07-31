@@ -1,10 +1,7 @@
-package net.sharksystem.asap.android.sample
+package net.sharksystem.asap.android.sample.asap
 
-import android.util.Log
 import net.sharksystem.asap.ASAPConnectionHandler
 import net.sharksystem.asap.ASAPEncounterConnectionType
-import net.sharksystem.asap.android.bluetoothLe.BleEngine
-import net.sharksystem.asap.android.util.getLogStart
 import net.sharksystem.asap.protocol.ASAPConnection
 import java.io.InputStream
 import java.io.OutputStream

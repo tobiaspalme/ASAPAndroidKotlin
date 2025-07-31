@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.compose.compiler)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -42,6 +43,7 @@ android {
 dependencies {
     implementation(project(":asapandroidkotlin"))
 
+
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
     implementation(libs.accompanist.permissions)
@@ -50,10 +52,20 @@ dependencies {
     implementation(libs.androidx.compose.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
+    implementation(libs.koin.android)
+    implementation(libs.koin.test)
+    implementation(libs.koin.annotations)
+    implementation(libs.koin.androidx.compose)
+    ksp(libs.koin.ksp)
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+ksp {
+    arg("KOIN_CONFIG_CHECK", "true")
 }
