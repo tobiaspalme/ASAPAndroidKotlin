@@ -1,11 +1,13 @@
 package net.sharksystem.asap.android.sample
 
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
@@ -17,20 +19,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberMultiplePermissionsState
-import net.sharksystem.asap.ASAP
-import net.sharksystem.asap.ASAPEncounterManagerImpl
-import net.sharksystem.asap.android.MacLayerEngine
-import net.sharksystem.asap.android.bluetoothLe.BleEngine
 import org.koin.compose.koinInject
 
 
@@ -39,8 +34,9 @@ import org.koin.compose.koinInject
 internal fun TestScreen() {
 
     val viewModel = koinInject<TestScreenViewModel>()
+    val uiState = viewModel.uiState.collectAsState()
 
-    val logs by BleEngine.logState.collectAsState()
+    val logs by viewModel.logs.collectAsState()
 
     val permissionsState = rememberMultiplePermissionsState(
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -74,15 +70,13 @@ internal fun TestScreen() {
         }
     }
 
-    Box(
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .safeDrawingPadding()
             .padding(16.dp),
     ) {
-        FlowRow(
-            modifier = Modifier.align(Alignment.TopCenter),
-        ) {
+        FlowRow {
             Button(onClick = {
                 viewModel.start()
             }) {
@@ -94,14 +88,35 @@ internal fun TestScreen() {
             }) {
                 Text("STOP BleEngine")
             }
+            Spacer(Modifier.width(16.dp))
+            Button(onClick = {
+                viewModel.sendHelloWorld()
+            }) {
+                Text("Send message")
+            }
         }
         Column(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(top = 72.dp)
+                .weight(1f)
+                .fillMaxWidth()
+                .border(width = 2.dp, color = Color.Black)
+                .padding(8.dp)
                 .verticalScroll(rememberScrollState())
         ) {
             Text(logs)
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .border(width = 2.dp, color = Color.Black)
+                .padding(8.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(uiState.value.receivedData ?: "empty")
         }
     }
 }
