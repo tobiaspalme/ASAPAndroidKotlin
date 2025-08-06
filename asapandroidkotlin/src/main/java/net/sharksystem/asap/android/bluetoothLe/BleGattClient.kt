@@ -48,7 +48,7 @@ class BleGattClient(
 
             if (newState == BluetoothProfile.STATE_CONNECTED && status == BluetoothGatt.GATT_SUCCESS) {
                 Log.i(this.getLogStart(), "---> Client: Successfully connected to ${device.name}.")
-
+                this@BleGattClient.gatt = gatt
                 gatt?.discoverServices()
             } else if (newState == BluetoothProfile.STATE_DISCONNECTED) {
                 if (status != BluetoothGatt.GATT_SUCCESS) {

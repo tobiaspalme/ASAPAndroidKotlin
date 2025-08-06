@@ -1,4 +1,4 @@
-package net.sharksystem.asap.android.sample
+package net.sharksystem.asap.android.sample.asap
 
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow

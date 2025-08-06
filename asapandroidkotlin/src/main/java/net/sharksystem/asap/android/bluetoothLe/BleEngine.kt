@@ -98,16 +98,19 @@ class BleEngine(
         }
 
         if (bluetoothAdapter == null) {
-            Log.e(this.getLogStart(), "Device does not support bluetooth ")
+            Log.e(this.getLogStart(), "Device does not support bluetooth")
+            logState.value += "[${getFormattedTimestamp()}] Device does not support bluetooth\n"
             return false
         }
         if (bluetoothAdapter.isEnabled.not()) {
             Log.e(this.getLogStart(), "Bluetooth is currently disabled")
+            logState.value += "[${getFormattedTimestamp()}] Bluetooth is currently disabled\n"
             return false
         }
 
         if (context.hasRequiredBluetoothPermissions().not()) {
             Log.e(this.getLogStart(), "Bluetooth permissions not granted")
+            logState.value += "[${getFormattedTimestamp()}] Bluetooth permissions not granted\n"
             return false
         }
         return true
@@ -131,7 +134,7 @@ class BleEngine(
     companion object {
 
         /**
-         * only used for demonstration purpose
+         * only used for demonstration purpose (remove in future)
          */
         val logState: MutableStateFlow<String> = MutableStateFlow("")
     }

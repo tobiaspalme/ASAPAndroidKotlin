@@ -90,8 +90,8 @@ class BleGattServer(
                 it.addCharacteristic(
                     BluetoothGattCharacteristic(
                         characteristicUUID,
-                        BluetoothGattCharacteristic.PROPERTY_WRITE or BluetoothGattCharacteristic.PROPERTY_READ or BluetoothGattCharacteristic.PROPERTY_NOTIFY,
-                        BluetoothGattCharacteristic.PERMISSION_WRITE or BluetoothGattCharacteristic.PERMISSION_READ,
+                        BluetoothGattCharacteristic.PROPERTY_READ,
+                        BluetoothGattCharacteristic.PERMISSION_READ,
                     )
                 )
             }
@@ -200,5 +200,4 @@ class BleGattServer(
             Log.e(this.getLogStart(), "Failed to start advertising: $errorCode")
         }
     }
-
 }

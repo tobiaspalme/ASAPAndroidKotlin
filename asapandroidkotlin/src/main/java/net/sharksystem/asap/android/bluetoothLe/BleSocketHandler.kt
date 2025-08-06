@@ -2,7 +2,6 @@ package net.sharksystem.asap.android.bluetoothLe
 
 import android.annotation.SuppressLint
 import android.bluetooth.BluetoothSocket
-import kotlinx.coroutines.delay
 import net.sharksystem.asap.ASAPEncounterConnectionType
 import net.sharksystem.asap.ASAPEncounterManager
 import net.sharksystem.asap.android.util.getFormattedTimestamp
@@ -12,6 +11,7 @@ import net.sharksystem.utils.streams.StreamPairImpl
 class BleSocketHandler(
     private val asapEncounterManager: ASAPEncounterManager
 ) : BleSocketConnectionListener {
+
     override fun onSuccessfulConnection(
         bluetoothSocket: BluetoothSocket,
         initiator: Boolean
@@ -19,7 +19,6 @@ class BleSocketHandler(
         handleBTSocket(bluetoothSocket, initiator)
     }
 
-    @SuppressLint("NewApi")
     private fun handleBTSocket(socket: BluetoothSocket, initiator: Boolean) {
         val remoteMacAddress = socket.remoteDevice.address
 
@@ -33,8 +32,6 @@ class BleSocketHandler(
             )
             if (socket.isConnected) {
                 BleEngine.logState.value += "[${getFormattedTimestamp()}] Socket created to [${socket.remoteDevice.name}, ${socket.remoteDevice.address}] with initiator: $initiator\n"
-            } else {
-                BleEngine.logState.value += "[${getFormattedTimestamp()}] EncounterManager closed connection to [${socket.remoteDevice.name}, ${socket.remoteDevice.address}]\n"
             }
         } catch (e: Exception) {
             e.printStackTrace()

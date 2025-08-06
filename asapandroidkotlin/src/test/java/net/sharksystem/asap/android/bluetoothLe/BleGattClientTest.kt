@@ -68,7 +68,11 @@ class BleGattClientTest {
     fun `can discoverServices when connected`() {
         val callback = gattCallbackSlot.captured
 
-        callback.onConnectionStateChange(mockGatt, BluetoothGatt.GATT_SUCCESS, BluetoothProfile.STATE_CONNECTED)
+        callback.onConnectionStateChange(
+            mockGatt,
+            BluetoothGatt.GATT_SUCCESS,
+            BluetoothProfile.STATE_CONNECTED
+        )
 
         verify { mockGatt.discoverServices() }
     }
@@ -77,7 +81,11 @@ class BleGattClientTest {
     fun `can set isDisconnected to true when disconnected`() {
         val callback = gattCallbackSlot.captured
 
-        callback.onConnectionStateChange(mockGatt, BluetoothGatt.GATT_SUCCESS, BluetoothProfile.STATE_DISCONNECTED)
+        callback.onConnectionStateChange(
+            mockGatt,
+            BluetoothGatt.GATT_SUCCESS,
+            BluetoothProfile.STATE_DISCONNECTED
+        )
 
         assertTrue(bleGattClient.isDisconnected)
     }
@@ -101,21 +109,28 @@ class BleGattClientTest {
         every { mockListener.onSuccessfulConnection(any(), any()) } just runs
         val callback = gattCallbackSlot.captured
 
-        // Act: Simulate a successful characteristic read
-        callback.onCharacteristicRead(mockGatt, mockCharacteristic, psmBytes, BluetoothGatt.GATT_SUCCESS)
+        callback.onCharacteristicRead(
+            mockGatt,
+            mockCharacteristic,
+            psmBytes,
+            BluetoothGatt.GATT_SUCCESS
+        )
 
-        // Assert: Verify the L2CAP socket was connected and the listener was notified
         coVerify { mockDevice.createInsecureL2capChannel(testPsmValue) }
         coVerify { mockListener.onSuccessfulConnection(any(), true) }
     }
 
     @Test
-    fun `can close gatt connection`() {
+    fun `can close gatt connection`() = runTest {
         val callback = gattCallbackSlot.captured
-        callback.onConnectionStateChange(mockGatt, BluetoothGatt.GATT_SUCCESS, BluetoothProfile.STATE_CONNECTED)
+        callback.onConnectionStateChange(
+            mockGatt,
+            BluetoothGatt.GATT_SUCCESS,
+            BluetoothProfile.STATE_CONNECTED
+        )
 
         bleGattClient.closeGatt()
 
-        verify { mockGatt.close() }
+        coVerify { mockGatt.disconnect() }
     }
 }

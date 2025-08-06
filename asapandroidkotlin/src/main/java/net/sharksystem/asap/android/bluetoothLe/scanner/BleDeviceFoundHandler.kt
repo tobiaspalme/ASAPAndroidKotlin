@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.bluetooth.BluetoothDevice
 import android.content.Context
 import android.util.Log
-import androidx.annotation.VisibleForTesting
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import net.sharksystem.asap.android.bluetoothLe.BleGattClient
@@ -108,7 +107,4 @@ class BleDeviceFoundHandler(
         }
         openConnections.clear()
     }
-
-    @VisibleForTesting
-    fun getOpenConnections() = openConnections
 }

@@ -18,7 +18,6 @@ import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -35,8 +34,6 @@ internal fun TestScreen() {
 
     val viewModel = koinInject<TestScreenViewModel>()
     val uiState = viewModel.uiState.collectAsState()
-
-    val logs by viewModel.logs.collectAsState()
 
     val permissionsState = rememberMultiplePermissionsState(
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
@@ -90,7 +87,7 @@ internal fun TestScreen() {
             }
             Spacer(Modifier.width(16.dp))
             Button(onClick = {
-                viewModel.sendHelloWorld()
+                viewModel.sendMessageToAllConnectedDevices("Test Message")
             }) {
                 Text("Send message")
             }
@@ -103,7 +100,7 @@ internal fun TestScreen() {
                 .padding(8.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(logs)
+            Text(uiState.value.logs)
         }
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -116,7 +113,12 @@ internal fun TestScreen() {
                 .padding(8.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(uiState.value.receivedData ?: "empty")
+            if (uiState.value.receivedDataList.isEmpty()) {
+                Text("No received Data")
+            }
+            uiState.value.receivedDataList.forEach {
+                Text(it)
+            }
         }
     }
 }

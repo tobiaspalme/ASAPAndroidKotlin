@@ -25,11 +25,10 @@ class BleScannerTest {
     private val mockScanSettings: ScanSettings = mockk<ScanSettings>(relaxed = true)
     private val mockScanFilter: ScanFilter = mockk<ScanFilter>(relaxed = true)
     private val mockServiceUuid: UUID = UUID.fromString("00002657-0000-1000-8000-00805f9b34fb")
-    private val mockCoroutineScope = CoroutineScope(UnconfinedTestDispatcher())
+    private val coroutineScope = CoroutineScope(UnconfinedTestDispatcher())
 
     private lateinit var bleScanner: BleScanner
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     @Before
     fun setup() {
         bleScanner = BleScanner(
@@ -39,7 +38,7 @@ class BleScannerTest {
             bluetoothLeScanner = mockBluetoothLeScanner,
             scanSettings = mockScanSettings,
             filter = mockScanFilter,
-            coroutineScope = mockCoroutineScope
+            coroutineScope = coroutineScope
         )
     }
 

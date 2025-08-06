@@ -26,6 +26,7 @@ class BleEngineTest {
     private val mockBleSocketHandler: BleSocketHandler = mockk<BleSocketHandler>(relaxed = true)
     private val mockBleDeviceFoundHandler: BleDeviceFoundHandler = mockk<BleDeviceFoundHandler>(relaxed = true)
     private val mockBleScanner: BleScanner = mockk<BleScanner>(relaxed = true)
+    private val bleGattServer: BleGattServer = mockk<BleGattServer>(relaxed = true)
 
     private lateinit var bleEngine: BleEngine
 
@@ -39,7 +40,8 @@ class BleEngineTest {
             bluetoothAdapter = mockBluetoothAdapter,
             bleSocketHandler = mockBleSocketHandler,
             bleDeviceFoundHandler = mockBleDeviceFoundHandler,
-            bleScanner = mockBleScanner
+            bleScanner = mockBleScanner,
+            bleGattServer = bleGattServer,
         )
     }
 
