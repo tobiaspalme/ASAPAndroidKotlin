@@ -25,7 +25,7 @@ class BleScanner(
     private val bleDeviceFoundListener: BleDeviceFoundListener,
     private val bluetoothLeScanner: BluetoothLeScanner? = bluetoothAdapter.bluetoothLeScanner,
     private val scanSettings: ScanSettings = ScanSettings.Builder()
-        .setScanMode(ScanSettings.SCAN_MODE_BALANCED).build(),
+        .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER).build(),
     private val filter: ScanFilter = ScanFilter.Builder()
         .setServiceUuid(ParcelUuid(serviceUUID)).build(),
     private val coroutineScope: CoroutineScope = CoroutineScope(Dispatchers.IO)

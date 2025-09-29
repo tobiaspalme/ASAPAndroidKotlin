@@ -20,6 +20,7 @@ import android.util.Log
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import net.sharksystem.asap.android.util.getLogStart
 import java.nio.ByteBuffer
@@ -58,7 +59,7 @@ class BleGattServer(
 
     private lateinit var serverSocket: BluetoothServerSocket
 
-    private lateinit var gattServerJob2: Job
+    private lateinit var gattServerJob: Job
 
     private val connectedDevices: MutableList<BluetoothDevice> = mutableListOf()
 
@@ -76,11 +77,8 @@ class BleGattServer(
      * Stops the GATT server and advertising.
      */
     fun stop() {
-        advertiser?.stopAdvertising(GattServerAdvertiseCallback)
-        connectedDevices.forEach { gattServer?.cancelConnection(it) }
-        gattServer?.close()
-        gattServer = null
-        gattServerJob2.cancel()
+        stopAdvertising()
+        stopGattServer()
     }
 
     private fun startGattServer() {
@@ -124,8 +122,8 @@ class BleGattServer(
         Log.d(this.getLogStart(), "Start Listening")
         serverSocket = adapter.listenUsingInsecureL2capChannel()
 
-        gattServerJob2 = scope.launch {
-            while (true) {
+        gattServerJob = scope.launch {
+            while (isActive) {
                 try {
                     val socket = serverSocket.accept()
                     Log.d(this.getLogStart(), "Server accepted connection -> handle Encounter")
@@ -135,6 +133,21 @@ class BleGattServer(
                 }
             }
         }
+    }
+
+    private fun stopGattServer() {
+        try {
+            connectedDevices.forEach { gattServer?.cancelConnection(it) }
+            gattServer?.close()
+            gattServer = null
+            gattServerJob.cancel()
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun stopAdvertising() {
+        advertiser?.stopAdvertising(GattServerAdvertiseCallback)
     }
 
     private val gattServerCallback = object : BluetoothGattServerCallback() {
